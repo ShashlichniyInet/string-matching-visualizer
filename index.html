@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Визуализатор поиска подстроки</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#fff; --fg:#1d2330; --muted:#6b7385; --line:#d9dde6;
+  --ok:#c9efd3; --ok-b:#2e9e58; --bad:#fbd0d0; --bad-b:#d64545;
+  --cur:#d8e6ff; --cur-b:#3b73e0; --found:#fff1b8; --found-b:#c99a00;
+  --ref:#ead9ff; --ref-b:#8a4fd6; --pp:#eef1f7; --sep:#dfe3ec; --box:#e3f4f7; --box-b:#1f8ea3;
+  --accent:#3b73e0;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#14171e; --panel:#1d222c; --fg:#e6e9f0; --muted:#8c94a8; --line:#323949;
+    --ok:#1f4a31; --ok-b:#4cc27a; --bad:#5a2626; --bad-b:#f06a6a;
+    --cur:#243a66; --cur-b:#6a9bff; --found:#5a4a10; --found-b:#f0c63a;
+    --ref:#3f2c63; --ref-b:#b98af5; --pp:#252b38; --sep:#363d4e; --box:#17434c; --box-b:#4fc3d8;
+    --accent:#6a9bff;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--muted);margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.inputs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.inputs{grid-template-columns:1fr}}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+input[type=text]{width:100%;font:16px ui-monospace,Menlo,Consolas,monospace;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.tab,button,select{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:7px 13px;border-radius:8px;cursor:pointer}
+.tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:disabled{opacity:.4;cursor:default}
+.presets{margin-left:auto}
+.ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ctrl input[type=range]{flex:1;min-width:120px}
+.step{color:var(--muted);font-variant-numeric:tabular-nums;min-width:110px}
+.stage{overflow-x:auto;padding:8px 0 14px}
+.row{display:flex;align-items:center;margin:3px 0;min-width:max-content}
+.lab{position:sticky;left:0;z-index:2;width:112px;flex:none;background:var(--panel);color:var(--muted);font-size:12px;padding-right:6px;text-align:right}
+.cs{display:flex}
+.cell{width:34px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);margin-right:-1px;font:600 16px ui-monospace,Menlo,Consolas,monospace;background:var(--panel)}
+.idxrow .cell{border:none;height:16px;font:11px ui-monospace,monospace;color:var(--muted);background:none}
+.cell.pp{background:var(--pp)}
+.cell.sep{background:var(--sep);color:var(--muted)}
+.cell.box{background:var(--box);box-shadow:inset 0 -3px 0 var(--box-b)}
+.cell.found{background:var(--found);border-color:var(--found-b)}
+.cell.ref{background:var(--ref);border-color:var(--ref-b)}
+.cell.cur{background:var(--cur);border-color:var(--cur-b);z-index:1}
+.cell.ok{background:var(--ok);border-color:var(--ok-b);z-index:1}
+.cell.bad{background:var(--bad);border-color:var(--bad-b);z-index:2}
+.cell.done{opacity:.55}
+.divider{height:1px;background:var(--line);margin:8px 0 8px 112px}
+.msg{font-size:16px;min-height:48px;padding:10px 12px;border-left:4px solid var(--accent);background:var(--bg);border-radius:6px}
+.vars{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chip{font:13px ui-monospace,Menlo,monospace;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 10px}
+.chip b{color:var(--accent)}
+.two{display:grid;grid-template-columns:1.2fr 1fr;gap:14px}
+@media(max-width:800px){.two{grid-template-columns:1fr}}
+pre{margin:0;font:13px/1.6 ui-monospace,Menlo,Consolas,monospace;overflow-x:auto}
+pre .ln{display:block;padding:0 8px;border-left:3px solid transparent;white-space:pre}
+pre .ln.act{background:var(--cur);border-left-color:var(--cur-b)}
+.info{color:var(--muted);font-size:14px}
+.info b{color:var(--fg)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border:1px solid;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.err{color:var(--bad-b);font-size:13px;margin-top:6px;min-height:18px}
+table{border-collapse:collapse;font-size:14px}
+td,th{padding:3px 12px 3px 0;text-align:left}
+th{color:var(--muted);font-weight:500}
+
+details{border-top:1px solid var(--line);padding:8px 0}
+details:first-of-type{border-top:none}
+summary{cursor:pointer;font-weight:600;padding:2px 0}
+.det{font-size:14.5px;line-height:1.6;padding:6px 2px 4px}
+.det p{margin:6px 0}.det ul,.det ol{margin:6px 0;padding-left:22px}.det li{margin:3px 0}
+.det code{font:13px ui-monospace,Menlo,monospace;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.det .key{border-left:3px solid var(--found-b);background:var(--found);padding:6px 10px;border-radius:4px;margin:8px 0;color:var(--fg)}
+
+.intro h2{font-size:17px;margin:0 0 6px}
+.intro .ex{font:15px ui-monospace,Menlo,monospace;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:8px 0;overflow-x:auto;white-space:pre}
+.intro .ex mark{background:var(--found);color:var(--fg);border-radius:3px;padding:0 1px}
+.intro dl{margin:6px 0;display:grid;grid-template-columns:max-content 1fr;gap:4px 14px}
+.intro dt{font-weight:600}.intro dd{margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Поиск подстроки: пошаговый визуализатор</h1>
+  <div class="sub">Наивный алгоритм · Z-алгоритм · Кнут–Моррис–Пратт</div>
+
+  <div class="card intro">
+    <h2>Что здесь происходит (начните с этого)</h2>
+    <div class="det">
+    <p><b>Задача.</b> Есть длинная строка — <b>текст T</b> — и короткая строка — <b>образец P</b>. Нужно найти, <b>в каких местах текста встречается образец</b>. Это то же самое, что Ctrl+F в редакторе: вы вводите слово, программа подсвечивает все его вхождения.</p>
+    <div class="ex">T = a b a b a b c a b a b
+P = a b a b
+
+<mark>abab</mark>abcabab   → вхождение в позиции 0
+ab<mark>abab</mark>cabab   → вхождение в позиции 2
+abababc<mark>abab</mark>   → вхождение в позиции 7
+
+Ответ: 0, 2, 7</div>
+    <p>Позиции считаются <b>с нуля</b>: первый символ текста имеет номер 0. Вхождения могут <b>перекрываться</b> (первое и второе выше делят символы «ab»).</p>
+    <p><b>Зачем это нужно.</b> Поиск по тексту, поиск в логах и документах, антиплагиат, поиск последовательностей ДНК в геноме, фильтры и анализаторы кода. Когда текст огромный (миллионы символов), важно, <b>насколько быстро</b> работает поиск.</p>
+    <p><b>Как мерить скорость.</b> Основная операция — <b>сравнение двух символов</b>. Чем меньше сравнений алгоритм делает, тем он быстрее. Счётчик «сравнений» под схемой — именно это. Длину текста обозначают <code>n</code>, длину образца <code>m</code>.</p>
+    <p><b>Три способа решить задачу:</b></p>
+    <dl>
+      <dt>Наивный</dt><dd>проверяет образец в каждой позиции текста по очереди. Просто, но на неудачных строках повторяет одну и ту же работу — до n·m сравнений.</dd>
+      <dt>Z-алгоритм</dt><dd>сначала изучает, как строка «повторяет саму себя», и использует это, чтобы не сравнивать лишнего. Всего порядка n+m сравнений.</dd>
+      <dt>Кнут–Моррис–Пратт</dt><dd>сначала изучает сам образец (где его начало повторяется в конце) и благодаря этому при несовпадении не возвращается назад по тексту. Тоже порядка n+m сравнений.</dd>
+    </dl>
+    <p>Все три алгоритма дают <b>один и тот же ответ</b>. Различаются только объём работы и идея. Сравните их в таблице «число сравнений» внизу страницы.</p>
+    <details><summary>Слова, которые встретятся</summary>
+      <dl>
+        <dt>Символ, строка</dt><dd>символ — одна буква; строка — последовательность символов. <code>T[i]</code> — символ строки на позиции i.</dd>
+        <dt>Подстрока</dt><dd>кусок строки из подряд идущих символов. <code>T[3..6]</code> — символы с 3-го по 6-й включительно.</dd>
+        <dt>Префикс</dt><dd>начало строки: у «abcd» префиксы «a», «ab», «abc», «abcd».</dd>
+        <dt>Суффикс</dt><dd>конец строки: у «abcd» суффиксы «d», «cd», «bcd», «abcd».</dd>
+        <dt>Бордер</dt><dd>строка, которая одновременно префикс и суффикс (и не равна всей строке). У «ababa» бордеры «a» и «aba». Нужен в КМП.</dd>
+        <dt>Сдвиг</dt><dd>позиция в тексте, к которой мы «прикладываем» начало образца.</dd>
+        <dt>O(…)</dt><dd>грубая оценка роста работы. O(n·m) — работа растёт как произведение длин; O(n+m) — как их сумма (гораздо медленнее растёт).</dd>
+      </dl>
+    </details>
+    <details open><summary>Как пользоваться страницей</summary>
+      <ol>
+        <li>Введите свой текст и образец (или выберите пример в списке). Обратите внимание, что регистр важен: «A» и «a» — разные символы.</li>
+        <li>Выберите алгоритм вкладкой. Для первого знакомства начните с «Наивного».</li>
+        <li>Нажимайте <b>▶|</b> (или клавишу →), чтобы идти по шагам, или <b>▶ Пуск</b>, чтобы смотреть как анимацию. Над схемой всегда написано, что сейчас сравнивается и почему.</li>
+        <li>Цвета: <span style="color:var(--ok-b)">■</span> совпало, <span style="color:var(--bad-b)">■</span> несовпадение, <span style="color:var(--found-b)">■</span> найденное вхождение. Остальные цвета описаны в легенде под схемой.</li>
+        <li>Справа внизу — псевдокод со строкой, выполняемой на текущем шаге. Ниже — подробное объяснение алгоритма.</li>
+        <li>Попробуйте пример «aaaaaaaaab / aaab», чтобы увидеть, где наивный алгоритм тратит лишние сравнения, а два других нет.</li>
+      </ol>
+    </details>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="inputs">
+      <div><label for="T">Текст T</label><input type="text" id="T" value="abababcabababab" spellcheck="false"></div>
+      <div><label for="P">Образец P</label><input type="text" id="P" value="ababab" spellcheck="false"></div>
+    </div>
+    <div class="err" id="err"></div>
+    <div class="tabs">
+      <button class="tab on" data-a="naive">Наивный</button>
+      <button class="tab" data-a="z">Z-алгоритм</button>
+      <button class="tab" data-a="kmp">Кнут–Моррис–Пратт</button>
+      <select class="presets" id="presets"></select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ctrl">
+      <button id="first" title="В начало">⏮</button>
+      <button id="prev" title="Назад (←)">◀</button>
+      <button id="play" title="Пробел">▶ Пуск</button>
+      <button id="next" title="Вперёд (→)">▶|</button>
+      <button id="last" title="В конец">⏭</button>
+      <input type="range" id="slider" min="0" max="0" value="0">
+      <span class="step" id="stepLbl"></span>
+    </div>
+    <div class="ctrl" style="margin-top:8px">
+      <span class="info">Скорость</span>
+      <input type="range" id="speed" min="1" max="10" value="5" style="max-width:180px">
+      <span class="info" id="matches" style="margin-left:auto"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="stage" id="stage"></div>
+    <div class="legend">
+      <span><i style="background:var(--ok);border-color:var(--ok-b)"></i>совпало</span>
+      <span><i style="background:var(--bad);border-color:var(--bad-b)"></i>несовпадение</span>
+      <span><i style="background:var(--cur);border-color:var(--cur-b)"></i>текущая позиция</span>
+      <span><i style="background:var(--found);border-color:var(--found-b)"></i>найденное вхождение</span>
+      <span><i style="background:var(--ref);border-color:var(--ref-b)"></i>используемое значение</span>
+      <span><i style="background:var(--box);border-color:var(--box-b)"></i>Z-окно [l, r)</span>
+    </div>
+    <div class="msg" id="msg" style="margin-top:12px"></div>
+    <div class="vars" id="vars"></div>
+  </div>
+
+  <div class="two">
+    <div class="card"><label>Псевдокод</label><pre id="code"></pre></div>
+    <div class="card">
+      <label>Об алгоритме</label>
+      <div class="info" id="info"></div>
+      <div style="margin-top:12px"><label>Число сравнений символов на этих строках</label>
+        <table id="stats"></table></div>
+    </div>
+  </div>
+  <div class="card"><label>Подробное объяснение</label><div id="detail"></div></div>
+</div>
+
+<script>
+// ==== ENGINE ====
+const add = (h, i, c) => { h[i] = (h[i] ? h[i] + ' ' : '') + c; };
+const cells = (str, h) => Array.from(str).map((ch, i) => ({ ch, cls: h[i] || '' }));
+const row = (label, offset, cs) => ({ label, offset, cells: cs });
+const q = c => `'${c}'`;
+
+function mkPush(F, st) {
+  return o => F.push({ cmp: st.cmp, matches: st.found.slice(), vars: {}, ...o });
+}
+
+// ---------- Naive ----------
+const NAIVE_CODE = [
+  'for s = 0 .. n − m:',
+  '    j = 0',
+  '    while j < m and T[s+j] == P[j]: j++',
+  '    if j == m: report s',
+];
+function buildNaive(T, P) {
+  const n = T.length, m = P.length, F = [], st = { cmp: 0, found: [] }, push = mkPush(F, st);
+  if (!m || m > n) {
+    push({ line: -1, msg: m ? 'Образец длиннее текста — вхождений нет.' : 'Образец пуст.', rows: [row('T', 0, cells(T, {}))] });
+    return { frames: F, code: NAIVE_CODE };
+  }
+  const base = () => { const h = {}; st.found.forEach(p => { for (let k = 0; k < m; k++) add(h, p + k, 'found'); }); return h; };
+  push({ line: 0, msg: `n = ${n}, m = ${m}. Перебираем сдвиги s = 0 … ${n - m}: прикладываем P к T[s..s+m−1] и сравниваем символы слева направо. На несовпадении сдвигаем образец на 1 и всё начинаем заново.`,
+    rows: [row('T', 0, cells(T, {})), row('P (сдвиг s=0)', 0, cells(P, {}))] });
+  for (let s = 0; s <= n - m; s++) {
+    for (let j = 0; j < m; j++) {
+      st.cmp++;
+      const eq = T[s + j] === P[j];
+      const last = eq && j + 1 === m;
+      if (last) st.found.push(s);
+      const th = base(), ph = {};
+      for (let k = 0; k < j; k++) { add(th, s + k, 'ok'); add(ph, k, 'ok'); }
+      add(th, s + j, eq ? 'ok' : 'bad'); add(ph, j, eq ? 'ok' : 'bad');
+      let msg = (j === 0 ? `Сдвиг s = ${s}. ` : '') + `T[${s + j}] = ${q(T[s + j])} ${eq ? '=' : '≠'} P[${j}] = ${q(P[j])}`;
+      if (last) msg += ` — весь образец совпал: вхождение в позиции ${s}.`;
+      else if (eq) msg += ' — совпало, идём дальше.';
+      else msg += s < n - m ? ` — несовпадение, сдвигаем образец: s = ${s + 1}.` : ' — несовпадение; сдвиги закончились.';
+      push({ line: last ? 3 : 2, msg, vars: { s, j }, rows: [row('T', 0, cells(T, th)), row(`P (сдвиг s=${s})`, s, cells(P, ph))] });
+      if (!eq) break;
+    }
+  }
+  return { frames: F, code: NAIVE_CODE };
+}
+
+// ---------- Z-algorithm ----------
+const Z_CODE = [
+  'S = P + "$" + T;   l = r = 0',
+  'for i = 1 .. |S| − 1:',
+  '    z = 0',
+  '    if i < r:  z = min(r − i, Z[i − l])',
+  '    while i+z < |S| and S[z] == S[i+z]:  z++',
+  '    Z[i] = z',
+  '    if i + z > r:  l = i;  r = i + z',
+  '// вхождение в T:  Z[i] == m  (i > m)  →  позиция i − m − 1',
+];
+function buildZ(T, P) {
+  const m = P.length, F = [], st = { cmp: 0, found: [] }, push = mkPush(F, st);
+  if (!m || m > T.length) {
+    push({ line: -1, msg: m ? 'Образец длиннее текста — вхождений нет.' : 'Образец пуст.', rows: [row('T', 0, cells(T, {}))] });
+    return { frames: F, code: Z_CODE };
+  }
+  const sep = ['$', '#', '|', '§', '¤', '¶'].find(c => !T.includes(c) && !P.includes(c)) || '\u0001';
+  const S = P + sep + T, N = S.length, Z = new Array(N).fill(null);
+  let l = 0, r = 0;
+  const topRow = (h) => {
+    const hh = {};
+    for (let k = 0; k < N; k++) add(hh, k, k < m ? 'pp' : k === m ? 'sep' : '');
+    st.found.forEach(p => { for (let k = 0; k < m; k++) add(hh, m + 1 + p + k, 'found'); });
+    for (let k = l; k < r; k++) add(hh, k, 'box');
+    Object.keys(h).forEach(k => add(hh, k, h[k]));
+    return row(`S = P${sep}T`, 0, cells(S, hh));
+  };
+  const zRow = (h) => row('Z', 0, Z.map((v, k) => ({ ch: k === 0 ? '–' : v === null ? '·' : String(v), cls: h[k] || '' })));
+  const botRow = (i, h) => row(`S со сдвигом i=${i}`, i, cells(S.slice(0, N - i), h));
+  const frame = (i, z, cmpIdx, eq, hz, msg, line) => {
+    const top = {}, bot = {};
+    for (let k = 0; k < z; k++) { add(top, i + k, 'ok'); add(bot, k, 'ok'); }
+    if (cmpIdx) { add(top, i + z, eq ? 'ok' : 'bad'); add(bot, z, eq ? 'ok' : 'bad'); }
+    push({ line, msg, vars: { i, l, r, z }, rows: [topRow(top), botRow(i, bot), zRow(hz)] });
+  };
+  push({ line: 0, msg: `Строим S = P + «${sep}» + T (длина ${N}); «${sep}» не встречается в строках, поэтому Z[i] ≤ m = ${m}. Z[i] — длина наибольшего общего префикса S и S[i..]. Образец найден в T там, где Z[i] = m. Окно [l, r) — самый правый найденный отрезок, совпадающий с префиксом S.`,
+    rows: [topRow({}), zRow({})], vars: { l, r } });
+  const finish = (i, z, note, hz, cmpIdx, eq) => {
+    Z[i] = z;
+    let msg = note + `Z[${i}] = ${z}.`;
+    if (i > m && z === m) { st.found.push(i - m - 1); msg += ` Z[${i}] = m → вхождение в T в позиции ${i} − ${m} − 1 = ${i - m - 1}.`; }
+    let line = 5;
+    if (i + z > r) { l = i; r = i + z; msg += ` Окно сдвигается: [l, r) = [${l}, ${r}).`; line = 6; }
+    hz[i] = 'cur';
+    frame(i, z, cmpIdx, eq, hz, msg, line);
+  };
+  for (let i = 1; i < N; i++) {
+    let z = 0; const hz = {};
+    if (i < r) {
+      const zi = Z[i - l]; z = Math.min(r - i, zi); hz[i - l] = 'ref';
+      if (zi < r - i) {
+        finish(i, zi, `i = ${i} внутри окна [${l}, ${r}); зеркальная позиция i − l = ${i - l}, Z[${i - l}] = ${zi} < r − i = ${r - i}. Значит, Z[${i}] = ${zi} без единого сравнения. `, hz, false, false);
+        continue;
+      }
+      frame(i, z, false, false, { ...hz, [i]: 'cur' }, `i = ${i} внутри окна [${l}, ${r}); Z[${i - l}] = ${zi} ≥ r − i = ${r - i}. Берём z = r − i = ${z} без сравнений и пробуем расширить дальше.`, 3);
+    }
+    let lastEq = false, did = false;
+    while (i + z < N) {
+      st.cmp++; did = true;
+      const eq = S[z] === S[i + z];
+      const hz2 = { ...hz, [i]: 'cur' };
+      if (eq) {
+        frame(i, z, true, true, hz2, `i = ${i}: S[${z}] = ${q(S[z])} = S[${i + z}] = ${q(S[i + z])} — совпало, z = ${z + 1}.`, 4);
+        z++;
+      } else { lastEq = false; finish(i, z, `i = ${i}: S[${z}] = ${q(S[z])} ≠ S[${i + z}] = ${q(S[i + z])} — расширение остановлено. `, hz, true, false); break; }
+      if (i + z >= N) { lastEq = true; }
+    }
+    if (!did || lastEq) finish(i, z, i + z >= N ? `i = ${i}: дошли до конца строки S. ` : '', hz, false, false);
+  }
+  return { frames: F, code: Z_CODE };
+}
+
+// ---------- KMP ----------
+const KMP_CODE = [
+  '// Фаза 1: π[i] — длина наибольшего собственного бордера P[0..i]',
+  'π[0] = 0',
+  'for i = 1 .. m − 1:',
+  '    k = π[i−1]',
+  '    while k > 0 and P[i] ≠ P[k]:  k = π[k−1]',
+  '    if P[i] == P[k]:  k++',
+  '    π[i] = k',
+  '// Фаза 2: поиск',
+  'j = 0',
+  'for i = 0 .. n − 1:',
+  '    while j > 0 and T[i] ≠ P[j]:  j = π[j−1]',
+  '    if T[i] == P[j]:  j++',
+  '    if j == m:  report i − m + 1;  j = π[m−1]',
+];
+function buildKMP(T, P) {
+  const n = T.length, m = P.length, F = [], st = { cmp: 0, found: [] }, push = mkPush(F, st);
+  if (!m || m > n) {
+    push({ line: -1, msg: m ? 'Образец длиннее текста — вхождений нет.' : 'Образец пуст.', rows: [row('T', 0, cells(T, {}))] });
+    return { frames: F, code: KMP_CODE };
+  }
+  const pi = new Array(m).fill(null); pi[0] = 0;
+  const piRow = h => row('π', 0, pi.map((v, k) => ({ ch: v === null ? '·' : String(v), cls: h[k] || '' })));
+  push({ line: 1, msg: `Фаза 1. Префикс-функция π[i] — длина наибольшего собственного префикса P[0..i], совпадающего с его суффиксом (бордера). π[0] = 0 всегда.`,
+    rows: [row('P', 0, cells(P, {})), piRow({ 0: 'cur' })], vars: { i: 0 } });
+  for (let i = 1; i < m; i++) {
+    let k = pi[i - 1];
+    for (;;) {
+      st.cmp++;
+      const eq = P[i] === P[k];
+      const hp = {}, hs = {}, hpi = {};
+      for (let t = 1; t <= k; t++) add(hp, i - t, 'ok');
+      for (let t = 0; t < k; t++) add(hs, t, 'ok');
+      add(hp, i, eq ? 'ok' : 'bad'); add(hs, k, eq ? 'ok' : 'bad');
+      const off = i - k, kOld = k;
+      let msg = `i = ${i}, k = ${k}: P[${i}] = ${q(P[i])} ${eq ? '=' : '≠'} P[${k}] = ${q(P[k])}`, line;
+      if (eq) { k++; pi[i] = k; msg += ` — совпало, k = ${k}, π[${i}] = ${k}.`; hpi[i] = 'cur'; line = 6; }
+      else if (k > 0) { const nk = pi[k - 1]; msg += ` — несовпадение: откатываем k := π[${k - 1}] = ${nk} (берём бордер короче).`; hpi[k - 1] = 'ref'; hpi[i] = 'cur'; k = nk; line = 4; }
+      else { pi[i] = 0; msg += ` — несовпадение при k = 0, π[${i}] = 0.`; hpi[i] = 'cur'; line = 6; }
+      push({ line, msg, vars: { i, k: kOld }, rows: [row('P', 0, cells(P, hp)), row(`P со сдвигом i−k=${off}`, off, cells(P, hs)), piRow(hpi)] });
+      if (eq || kOld === 0) break;
+    }
+  }
+  push({ line: 7, msg: `Префикс-функция готова: π = [${pi.join(', ')}]. Фаза 2. Идём по тексту один раз, указатель i никогда не возвращается назад; j — длина текущего совпавшего префикса P. При несовпадении j := π[j−1] — образец сдвигается без повторного сравнения уже совпавшего.`,
+    rows: [row('T', 0, cells(T, {})), row('P (j=0)', 0, cells(P, {})), row('π', 0, pi.map(v => ({ ch: String(v), cls: '' })))], vars: { i: 0, j: 0 } });
+  const foundHL = () => { const h = {}; st.found.forEach(p => { for (let t = 0; t < m; t++) add(h, p + t, 'found'); }); return h; };
+  let j = 0;
+  for (let i = 0; i < n; i++) {
+    for (;;) {
+      st.cmp++;
+      const eq = T[i] === P[j];
+      const jOld = j, hpi = {}, hstat = {};
+      if (eq && j + 1 === m) st.found.push(i - m + 1);
+      const th = foundHL(), ph = {};
+      for (let t = 0; t < j; t++) { add(th, i - j + t, 'ok'); add(ph, t, 'ok'); }
+      add(th, i, eq ? 'ok' : 'bad'); add(ph, j, eq ? 'ok' : 'bad');
+      let msg = `i = ${i}, j = ${j}: T[${i}] = ${q(T[i])} ${eq ? '=' : '≠'} P[${j}] = ${q(P[j])}`, line;
+      if (eq) {
+        j++; line = 11;
+        if (j === m) {
+          msg += ` — совпал весь образец: вхождение в позиции ${i - m + 1}. Продолжаем с j := π[${m - 1}] = ${pi[m - 1]}.`;
+          hpi[m - 1] = 'ref'; for (let t = 0; t < pi[m - 1]; t++) add(hstat, t, 'ok'); j = pi[m - 1]; line = 12;
+        } else msg += ` — совпало, j = ${j}.`;
+      } else if (j > 0) {
+        const nj = pi[j - 1];
+        msg += ` — несовпадение: j := π[${j - 1}] = ${nj}. Образец сдвигается на ${j - nj}, T[${i}] сравним заново.`;
+        hpi[j - 1] = 'ref'; for (let t = 0; t < nj; t++) add(hstat, t, 'ok'); j = nj; line = 10;
+      } else { msg += ' — несовпадение при j = 0, переходим к следующему символу текста.'; line = 10; }
+      push({ line, msg, vars: { i, j: jOld, 'j после': j }, rows: [
+        row('T', 0, cells(T, th)), row(`P (сдвиг i−j=${i - jOld})`, i - jOld, cells(P, ph)), 'div',
+        row('P', 0, cells(P, hstat)), row('π', 0, pi.map((v, t) => ({ ch: String(v), cls: hpi[t] || '' })))] });
+      if (eq || jOld === 0) break;
+    }
+  }
+  return { frames: F, code: KMP_CODE };
+}
+
+const INFO = {
+  naive: '<b>Идея:</b> проверить каждое выравнивание образца с текстом отдельно, без предобработки.<br><b>Время:</b> O(n·m) в худшем случае (например, T = aaaa…ab, P = aaab), в среднем на случайных строках близко к O(n).<br><b>Память:</b> O(1). После несовпадения вся информация о совпавшей части теряется — именно это устраняют следующие алгоритмы.',
+  z: '<b>Идея (предобработка):</b> для строки S = P$T вычислить Z-массив: Z[i] — длина наибольшего общего префикса S и суффикса S[i..]. Вхождение P ⇔ Z[i] = |P|. Z считается за линейное время благодаря окну [l, r): внутри него значения берутся из уже вычисленных «зеркальных» Z[i−l].<br><b>Время:</b> O(n + m) — указатель r только растёт, каждый символ расширяется не более раза.<br><b>Память:</b> O(n + m).',
+  kmp: '<b>Идея (предобработка):</b> префикс-функция π[i] образца говорит, на какую длину можно «откатить» совпавший префикс при несовпадении, не возвращаясь назад по тексту.<br><b>Время:</b> O(n + m): и в фазе 1, и в фазе 2 значение k (j) увеличивается не более чем на 1 за шаг, а каждый откат его уменьшает — откатов не больше, чем приращений.<br><b>Память:</b> O(m).',
+};
+
+const DETAIL = {
+naive: [
+['Постановка и идея', `<p>Даны текст <code>T</code> длины n и образец <code>P</code> длины m. Нужно найти все позиции s, для которых <code>T[s..s+m−1] = P</code>. Таких кандидатов ровно n−m+1: <b>сдвигов</b> s = 0, 1, …, n−m.</p>
+<p>Наивный алгоритм никак не готовится: для каждого сдвига просто прикладывает P к T и сравнивает символы слева направо, пока не найдёт несовпадение или не дойдёт до конца образца.</p>`],
+['Шаг за шагом', `<ol><li>Берём сдвиг s (сначала 0), ставим j = 0.</li>
+<li>Сравниваем <code>T[s+j]</code> и <code>P[j]</code>. Совпали — j++ и повторяем (в визуализации ячейки зеленеют).</li>
+<li>Несовпадение (красная пара) — сдвиг s не подходит, переходим к s+1 и <b>начинаем сравнение с j = 0</b>.</li>
+<li>Если j дошло до m — весь образец совпал, записываем вхождение s (жёлтая подсветка) и тоже переходим к s+1. Так находятся и перекрывающиеся вхождения.</li></ol>`],
+['Почему медленно', `<div class="key">Алгоритм «забывает» всё, что узнал. После несовпадения на j-м символе он знает, что <code>T[s..s+j−1] = P[0..j−1]</code>, но на следующем сдвиге сравнивает эти же символы заново.</div>
+<p>Худший случай — T = <code>aaaaaaaaab</code>, P = <code>aaab</code>: на каждом сдвиге совпадают m−1 символов и только последний не сходится, итого ≈ (n−m+1)·m сравнений, то есть O(n·m). Попробуйте этот пример из списка и сравните счётчики в таблице справа.</p>
+<p>Лучший случай для сравнений: первый символ почти всегда не совпадает, тогда ≈ n сравнений. На «обычных» текстах наивный поиск ведёт себя близко к линейному, поэтому его часто хватает на практике.</p>`],
+['Что запомнить', `<ul><li>Время: O(n·m) в худшем случае, память O(1), предобработки нет.</li>
+<li>Инвариант: перед сдвигом s все вхождения в позициях &lt; s уже найдены.</li>
+<li>Улучшения (Z-алгоритм и КМП) основаны на одной мысли: информацию о совпавшей части нужно использовать, а не выбрасывать.</li></ul>`]
+],
+z: [
+['Что такое Z-функция', `<p>Для строки S определим <code>Z[i]</code> (i ≥ 1) как длину <b>наибольшего общего префикса</b> строки S и её суффикса <code>S[i..]</code>. Иначе: сколько символов подряд, начиная с позиции i, повторяют начало S. <code>Z[0]</code> не определяют (в визуализации «–»).</p>
+<p>Пример: S = <code>aabaab</code>, Z = [–, 1, 0, 3, 1, 0].</p>`],
+['Как с её помощью искать подстроку', `<p>Склеиваем <code>S = P + $ + T</code>, где <code>$</code> — символ, которого нет ни в P, ни в T (визуализатор подбирает его сам). Благодаря разделителю ни одно значение Z не может быть больше m = |P|.</p>
+<div class="key">Образец встречается в T с позиции p ⇔ <code>Z[m+1+p] = m</code>. Действительно, Z = m означает, что следующие m символов совпадают с префиксом S, то есть с P.</div>
+<p>Поэтому достаточно уметь считать Z-массив быстро. Наивно это O(N²), где N = |S| = n+m+1.</p>`],
+['Окно [l, r) — главная идея', `<p>Алгоритм идёт по i = 1, 2, … и поддерживает <b>окно [l, r)</b> — самый правый отрезок, который уже оказался совпадающим с префиксом S: <code>S[l..r−1] = S[0..r−l−1]</code>. (В визуализации это голубые ячейки с чертой снизу.)</p>
+<p>Если новая позиция i лежит внутри окна (i &lt; r), то символы <code>S[i..r−1]</code> — копия символов <code>S[i−l..r−l−1]</code>, а про них мы уже всё знаем: это <code>Z[i−l]</code>. Отсюда два случая:</p>
+<ul><li><b>Z[i−l] &lt; r−i</b> (фиолетовое значение, «чистое копирование»). Совпадение с префиксом заканчивается внутри окна, поэтому <code>Z[i] = Z[i−l]</code> <b>без единого сравнения</b>.</li>
+<li><b>Z[i−l] ≥ r−i.</b> Внутри окна достоверно совпадает r−i символов, начинаем с <code>z = r−i</code> и сравниваем дальше за границей окна: <code>S[z]</code> и <code>S[i+z]</code>.</li></ul>
+<p>Если i ≥ r, окно ничем не помогает: z = 0 и сравниваем с нуля.</p>`],
+['Шаг за шагом по визуализации', `<ol><li>Верхняя строка — S, ниже копия S, сдвинутая на i: в каждом столбце сравниваются <code>S[k]</code> и <code>S[i+k]</code>.</li>
+<li>Зелёные пары — уже совпавшая часть, красная — остановка. Z[i] — число зелёных пар.</li>
+<li>В конце шага значение записывается в строку Z. Если <code>i+z &gt; r</code>, окно переезжает: l = i, r = i+z.</li>
+<li>Если Z[i] = m (и i &gt; m), в сообщении указывается позиция вхождения в T: <code>i − m − 1</code>, а в строке S подсвечивается найденный фрагмент.</li></ol>`],
+['Почему линейно', `<div class="key">Граница r никогда не уменьшается. Каждое успешное сравнение (совпадение) происходит за границей r и сдвигает её вправо на 1, поэтому всего успешных сравнений не больше N. Неуспешных сравнений ≤ 1 на каждое i, то есть ≤ N.</div>
+<p>Итого O(N) = O(n+m) по времени и памяти. Сравните счётчик сравнений с наивным на примере <code>aaaaaaaaab / aaab</code>.</p>`],
+['Типичные ошибки', `<ul><li>Забыть разделитель: тогда Z может превысить m и вхождения перестанут определяться условием Z = m.</li>
+<li>Перепутать индексы: позиция в T равна <code>i − m − 1</code> (m символов образца + 1 разделитель).</li>
+<li>В случае «чистого копирования» не нужно сравнивать символы: проверка бы дала несовпадение, но лишнее сравнение не нужно.</li></ul>`]
+],
+kmp: [
+['Идея: не возвращаться назад', `<p>Когда образец совпал с текстом на j символов и на следующем символе произошло несовпадение, мы знаем, что последние j символов текста равны <code>P[0..j−1]</code>. Наивный алгоритм сдвигает образец на 1 и сравнивает всё заново.</p>
+<div class="key">КМП спрашивает: какой самый длинный <b>собственный префикс</b> P[0..j−1] одновременно является его <b>суффиксом</b> (бордер)? Образец можно сдвинуть так, чтобы этот бордер лёг на уже просмотренный кусок текста, и продолжить сравнение с j := длина бордера, а указатель по тексту не двигать назад.</div>`],
+['Фаза 1: префикс-функция π', `<p><code>π[i]</code> — длина наибольшего <b>собственного</b> бордера строки <code>P[0..i]</code> (префикс = суффикс, не равный всей строке). Пример: P = <code>ababab</code>, π = [0,0,1,2,3,4].</p>
+<p>Считаем её тем же приёмом, образец «ищется в самом себе»:</p>
+<ol><li><code>π[0] = 0</code>. Для i = 1…m−1 берём <code>k = π[i−1]</code> — длину бордера предыдущего префикса.</li>
+<li>Сравниваем <code>P[i]</code> и <code>P[k]</code> (нижняя строка в визуализации — копия P, сдвинутая на i−k, так что P[k] стоит под P[i]).</li>
+<li>Совпало — бордер можно продлить: <code>k++</code>, <code>π[i] = k</code>.</li>
+<li>Не совпало и k &gt; 0 — пробуем более короткий бордер: <code>k = π[k−1]</code> (фиолетовая ячейка показывает, какое значение используется) и сравниваем снова.</li>
+<li>Не совпало и k = 0 — <code>π[i] = 0</code>.</li></ol>
+<p>Откат по π[k−1] корректен, потому что все бордеры префикса длины k — это цепочка k, π[k−1], π[π[k−1]−1], … в порядке убывания.</p>`],
+['Фаза 2: поиск в тексте', `<p>Переменная <code>j</code> — длина текущего совпавшего префикса образца (то есть <code>T[i−j..i−1] = P[0..j−1]</code>). Для каждого i:</p>
+<ol><li>Пока j &gt; 0 и <code>T[i] ≠ P[j]</code> — откат <code>j = π[j−1]</code>. Образец сдвигается на j − π[j−1], а T[i] сравнивается заново (указатель i стоит на месте).</li>
+<li>Если <code>T[i] = P[j]</code> — j++.</li>
+<li>Если j = m — найдено вхождение в позиции <code>i−m+1</code>. Чтобы найти и перекрывающиеся, продолжаем с <code>j = π[m−1]</code>.</li></ol>
+<p>В визуализации верхняя пара строк (T и сдвинутый P) — текущее состояние; нижняя пара (P и π) — таблица, из которой берётся откат. Зелёные ячейки образца при откате — тот самый бордер, который остаётся совпавшим.</p>`],
+['Почему линейно', `<div class="key">Потенциал: j растёт максимум на 1 за каждый символ текста, а каждый откат строго уменьшает j. Значит, число откатов за всё время ≤ n, и всего сравнений ≤ 2n. Фаза 1 аналогично даёт ≤ 2m.</div>
+<p>Итого O(n + m) по времени, O(m) памяти. В отличие от наивного алгоритма, КМП ни разу не сравнивает один и тот же символ текста больше O(1) раз «амортизированно».</p>`],
+['Сравнение с Z-алгоритмом', `<ul><li>Оба алгоритма линейны и используют одну идею: переиспользуют совпадение префикса с самим образцом.</li>
+<li>Z-алгоритм работает с конкатенацией и массивом Z размера n+m+1. КМП хранит только π длины m и читает текст как поток, поэтому подходит для онлайн-поиска.</li>
+<li>Между собой массивы связаны: π и Z взаимно выражаются друг через друга за линейное время.</li></ul>`],
+['Типичные ошибки', `<ul><li>После нахождения вхождения не обнулять j, а брать <code>π[m−1]</code>, иначе пропустятся перекрывающиеся вхождения (попробуйте <code>aaaa / aa</code>).</li>
+<li>Откат делать по <code>π[j−1]</code>, а не по <code>π[j]</code>.</li>
+<li>В откате не двигать i: символ T[i] ещё не «использован».</li></ul>`]
+]
+};
+const BUILDERS = { naive: buildNaive, z: buildZ, kmp: buildKMP };
+
+// ==== UI ====
+if (typeof document !== 'undefined') {
+  const $ = id => document.getElementById(id);
+  const PRESETS = [
+    ['abababcabababab / ababab', 'abababcabababab', 'ababab'],
+    ['ABC ABCDAB ABCDABCDABDE / ABCDABD (классика КМП)', 'ABC ABCDAB ABCDABCDABDE', 'ABCDABD'],
+    ['aaaaaaaaab / aaab (худший случай naive)', 'aaaaaaaaab', 'aaab'],
+    ['aabaabaaaabaabaab / aabaab (перекрытия)', 'aabaabaaaabaabaab', 'aabaab'],
+    ['xyabxabxyabxyabxy / abxy', 'xyabxabxyabxyabxy', 'abxy'],
+    ['abcabcabc / def (нет вхождений)', 'abcabcabc', 'def'],
+  ];
+  $('presets').innerHTML = '<option value="">Примеры…</option>' + PRESETS.map((p, i) => `<option value="${i}">${p[0]}</option>`).join('');
+  let algo = 'naive', frames = [], step = 0, timer = null;
+
+  function rebuild(keepStep) {
+    const T = $('T').value, P = $('P').value;
+    $('err').textContent = T.length > 80 || P.length > 40 ? 'Длинные строки неудобно смотреть; рекомендуется |T| ≤ 40, |P| ≤ 20.' : '';
+    const res = BUILDERS[algo](T, P);
+    frames = res.frames;
+    const lastF = frames[frames.length - 1];
+    const ms = lastF.matches;
+    frames.push({ ...lastF, line: -1, msg: ms.length ? `Готово. Вхождения образца: позиции ${ms.join(', ')} (нумерация с 0). Сравнений символов: ${lastF.cmp}.` : `Готово. Вхождений нет. Сравнений символов: ${lastF.cmp}.` });
+    $('code').innerHTML = '';
+    res.code.forEach((t, i) => { const d = document.createElement('span'); d.className = 'ln'; d.dataset.i = i; d.textContent = t; $('code').appendChild(d); });
+    $('info').innerHTML = INFO[algo];
+    if ($('detail').dataset.a !== algo) { $('detail').dataset.a = algo; $('detail').innerHTML = DETAIL[algo].map((d, i) => `<details${i === 0 ? ' open' : ''}><summary>${d[0]}</summary><div class="det">${d[1]}</div></details>`).join(''); }
+    $('slider').max = frames.length - 1;
+    step = keepStep ? Math.min(step, frames.length - 1) : 0;
+    stats(T, P);
+    render();
+  }
+  function stats(T, P) {
+    const names = { naive: 'Наивный', z: 'Z-алгоритм', kmp: 'КМП' };
+    $('stats').innerHTML = '<tr><th></th><th>сравнений</th><th>вхождения</th></tr>' + Object.keys(names).map(a => {
+      const f = BUILDERS[a](T, P).frames, l = f[f.length - 1];
+      return `<tr><td>${a === algo ? '<b>' : ''}${names[a]}${a === algo ? '</b>' : ''}</td><td>${l.cmp}</td><td>${l.matches.length ? l.matches.join(', ') : '—'}</td></tr>`;
+    }).join('');
+  }
+  function cellEl(c) {
+    const d = document.createElement('div');
+    d.className = 'cell ' + c.cls; d.textContent = c.ch === ' ' ? '␣' : c.ch === '\u0001' ? '·' : c.ch;
+    return d;
+  }
+  function rowEl(r, cls) {
+    const e = document.createElement('div'); e.className = 'row ' + (cls || '');
+    const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = r.label; e.appendChild(lab);
+    const cs = document.createElement('div'); cs.className = 'cs'; cs.style.marginLeft = (r.offset * 33) + 'px';
+    r.cells.forEach(c => cs.appendChild(cellEl(c))); e.appendChild(cs);
+    return e;
+  }
+  function render() {
+    const f = frames[step], st = $('stage');
+    st.innerHTML = '';
+    const first = f.rows[0];
+    st.appendChild(rowEl({ label: '', offset: 0, cells: first.cells.map((_, i) => ({ ch: String(i), cls: '' })) }, 'idxrow'));
+    f.rows.forEach(r => { if (r === 'div') { const d = document.createElement('div'); d.className = 'divider'; st.appendChild(d); } else st.appendChild(rowEl(r)); });
+    $('msg').textContent = f.msg;
+    $('vars').innerHTML = Object.entries({ ...f.vars, 'сравнений': f.cmp }).map(([k, v]) => `<span class="chip">${k} = <b>${v}</b></span>`).join('');
+    $('matches').textContent = 'Вхождения: ' + (f.matches.length ? f.matches.join(', ') : '—');
+    [...$('code').children].forEach(e => e.classList.toggle('act', +e.dataset.i === f.line));
+    $('slider').value = step;
+    $('stepLbl').textContent = `Шаг ${step} / ${frames.length - 1}`;
+    $('first').disabled = $('prev').disabled = step === 0;
+    $('next').disabled = $('last').disabled = step === frames.length - 1;
+  }
+  function go(s) { step = Math.max(0, Math.min(frames.length - 1, s)); render(); }
+  function stop() { clearInterval(timer); timer = null; $('play').textContent = '▶ Пуск'; }
+  function play() {
+    if (timer) return stop();
+    if (step === frames.length - 1) step = 0;
+    $('play').textContent = '⏸ Пауза';
+    const tick = () => { if (step >= frames.length - 1) return stop(); go(step + 1); };
+    timer = setInterval(tick, 1300 - $('speed').value * 120);
+  }
+  $('play').onclick = play;
+  $('speed').oninput = () => { if (timer) { stop(); play(); } };
+  $('first').onclick = () => { stop(); go(0); };
+  $('prev').onclick = () => { stop(); go(step - 1); };
+  $('next').onclick = () => { stop(); go(step + 1); };
+  $('last').onclick = () => { stop(); go(frames.length - 1); };
+  $('slider').oninput = e => { stop(); go(+e.target.value); };
+  document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+    stop(); algo = b.dataset.a;
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
+    rebuild(false);
+  });
+  ['T', 'P'].forEach(id => $(id).oninput = () => { stop(); rebuild(false); });
+  $('presets').onchange = e => { const p = PRESETS[e.target.value]; if (p) { $('T').value = p[1]; $('P').value = p[2]; stop(); rebuild(false); } e.target.value = ''; };
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
+    if (e.key === 'ArrowRight') { stop(); go(step + 1); }
+    else if (e.key === 'ArrowLeft') { stop(); go(step - 1); }
+    else if (e.key === ' ') { e.preventDefault(); play(); }
+  });
+  rebuild(false);
+}
+</script>
+</body>
+</html>
