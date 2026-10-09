@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Визуализатор поиска подстроки</title>
+<title>Строковые алгоритмы: визуализатор</title>
 <style>
 :root{
   --bg:#f6f7f9; --panel:#fff; --fg:#1d2330; --muted:#6b7385; --line:#d9dde6;
@@ -87,12 +87,31 @@ summary{cursor:pointer;font-weight:600;padding:2px 0}
 .intro .ex mark{background:var(--found);color:var(--fg);border-radius:3px;padding:0 1px}
 .intro dl{margin:6px 0;display:grid;grid-template-columns:max-content 1fr;gap:4px 14px}
 .intro dt{font-weight:600}.intro dd{margin:0}
+
+.tbl{margin:10px 0 4px;overflow-x:auto}
+.tbl table{border-collapse:collapse;font:14px ui-monospace,Menlo,monospace}
+.tbl th,.tbl td{border:1px solid var(--line);padding:3px 10px;text-align:center}
+.tbl th{background:var(--pp);color:var(--muted);font-weight:500}
+.tbl tr.ok td{background:var(--ok)}.tbl tr.ref td{background:var(--ref)}.tbl tr.cur td{background:var(--cur);font-weight:700}.tbl tr.found td{background:var(--found)}
+.cap{font-size:12px;color:var(--muted);margin-top:6px}
+.treewrap{overflow-x:auto;margin-top:8px}
+.treewrap svg{display:block}
+.tn{fill:var(--panel);stroke:var(--line);stroke-width:2}
+.tn2{fill:none;stroke:var(--line);stroke-width:2}
+.tn.cur{fill:var(--cur);stroke:var(--cur-b)}.tn.ok,.tn.new{fill:var(--ok);stroke:var(--ok-b)}.tn.found{fill:var(--found);stroke:var(--found-b)}.tn.ref{fill:var(--ref);stroke:var(--ref-b)}.tn.bad{fill:var(--bad);stroke:var(--bad-b)}
+.te{stroke:var(--muted);stroke-width:2;fill:none}
+.te.cur{stroke:var(--cur-b);stroke-width:3.5}.te.new{stroke:var(--ok-b);stroke-width:3.5}.te.found{stroke:var(--found-b);stroke-width:3.5}.te.ref{stroke:var(--ref-b);stroke-width:3}
+.tlk{fill:none;stroke:var(--ref-b);stroke-width:1.8;stroke-dasharray:5 4}.tlk.cur{stroke:var(--cur-b);stroke-width:2.6}
+.arr{fill:var(--ref-b)}
+.tl{fill:var(--fg);font:600 13px ui-monospace,Menlo,monospace}
+.ts{fill:var(--found-b);font:600 12px ui-monospace,Menlo,monospace}
+.tel{fill:var(--fg);font:600 14px ui-monospace,Menlo,monospace;paint-order:stroke;stroke:var(--panel);stroke-width:5px;stroke-linejoin:round}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Поиск подстроки: пошаговый визуализатор</h1>
-  <div class="sub">Наивный алгоритм · Z-алгоритм · Кнут–Моррис–Пратт</div>
+  <h1>Строковые алгоритмы: пошаговый визуализатор</h1>
+  <div class="sub">Поиск подстроки · Z-функция · КМП · Бойер–Мур · Ахо–Корасик · суффиксное дерево · Укконен · суффиксный массив</div>
 
   <div class="card intro">
     <h2>Что здесь происходит (начните с этого)</h2>
@@ -109,13 +128,18 @@ abababc<mark>abab</mark>   → вхождение в позиции 7
     <p>Позиции считаются <b>с нуля</b>: первый символ текста имеет номер 0. Вхождения могут <b>перекрываться</b> (первое и второе выше делят символы «ab»).</p>
     <p><b>Зачем это нужно.</b> Поиск по тексту, поиск в логах и документах, антиплагиат, поиск последовательностей ДНК в геноме, фильтры и анализаторы кода. Когда текст огромный (миллионы символов), важно, <b>насколько быстро</b> работает поиск.</p>
     <p><b>Как мерить скорость.</b> Основная операция — <b>сравнение двух символов</b>. Чем меньше сравнений алгоритм делает, тем он быстрее. Счётчик «сравнений» под схемой — именно это. Длину текста обозначают <code>n</code>, длину образца <code>m</code>.</p>
-    <p><b>Три способа решить задачу:</b></p>
+    <p><b>Какие бывают алгоритмы.</b> Они делятся на три группы по тому, что именно мы заранее готовим:</p>
     <dl>
-      <dt>Наивный</dt><dd>проверяет образец в каждой позиции текста по очереди. Просто, но на неудачных строках повторяет одну и ту же работу — до n·m сравнений.</dd>
-      <dt>Z-алгоритм</dt><dd>сначала изучает, как строка «повторяет саму себя», и использует это, чтобы не сравнивать лишнего. Всего порядка n+m сравнений.</dd>
-      <dt>Кнут–Моррис–Пратт</dt><dd>сначала изучает сам образец (где его начало повторяется в конце) и благодаря этому при несовпадении не возвращается назад по тексту. Тоже порядка n+m сравнений.</dd>
+      <dt>1. Поиск одного образца (вкладки слева)</dt><dd>
+        <b>Наивный</b> — проверяет каждое положение по очереди; просто, но до n·m сравнений.<br>
+        <b>Z-функция</b> — сначала считаем, насколько каждая позиция строки «повторяет её начало»; образец найден там, где повтор равен длине образца.<br>
+        <b>КМП (на π и на Z)</b> — изучаем сам образец (где его начало повторяется в конце) и не возвращаемся назад по тексту.<br>
+        <b>Бойер–Мур</b> — сравнивает справа налево и прыгает сразу на несколько позиций; на практике обычно самый быстрый.</dd>
+      <dt>2. Поиск многих образцов</dt><dd><b>Ахо–Корасик</b> — строит из словаря автомат и ищет все слова за один проход по тексту.</dd>
+      <dt>3. Индекс строки для любых запросов</dt><dd>
+        <b>Суффиксное дерево</b> (простое построение и алгоритм <b>Укконена</b> за O(n)) и <b>суффиксный массив</b> — готовим структуру по самой строке один раз; после этого каждый образец ищется за время порядка его длины (дерево) или O(m·log n) (массив).</dd>
     </dl>
-    <p>Все три алгоритма дают <b>один и тот же ответ</b>. Различаются только объём работы и идея. Сравните их в таблице «число сравнений» внизу страницы.</p>
+    <p>Алгоритмы поиска одного образца дают <b>один и тот же ответ</b>, различаются только объёмом работы и идеей — сравните их по таблице «число сравнений» внизу страницы. Порядок вкладок соответствует порядку изучения: каждый следующий алгоритм опирается на идеи предыдущего.</p>
     <details><summary>Слова, которые встретятся</summary>
       <dl>
         <dt>Символ, строка</dt><dd>символ — одна буква; строка — последовательность символов. <code>T[i]</code> — символ строки на позиции i.</dd>
@@ -129,12 +153,12 @@ abababc<mark>abab</mark>   → вхождение в позиции 7
     </details>
     <details open><summary>Как пользоваться страницей</summary>
       <ol>
-        <li>Введите свой текст и образец (или выберите пример в списке). Обратите внимание, что регистр важен: «A» и «a» — разные символы.</li>
+        <li>Введите свой текст и образец (или выберите пример в списке). Для Ахо–Корасик образцов несколько — через запятую; для суффиксных структур вводится одна строка, а образец необязателен. Обратите внимание, что регистр важен: «A» и «a» — разные символы.</li>
         <li>Выберите алгоритм вкладкой. Для первого знакомства начните с «Наивного».</li>
         <li>Нажимайте <b>▶|</b> (или клавишу →), чтобы идти по шагам, или <b>▶ Пуск</b>, чтобы смотреть как анимацию. Над схемой всегда написано, что сейчас сравнивается и почему.</li>
         <li>Цвета: <span style="color:var(--ok-b)">■</span> совпало, <span style="color:var(--bad-b)">■</span> несовпадение, <span style="color:var(--found-b)">■</span> найденное вхождение. Остальные цвета описаны в легенде под схемой.</li>
         <li>Справа внизу — псевдокод со строкой, выполняемой на текущем шаге. Ниже — подробное объяснение алгоритма.</li>
-        <li>Попробуйте пример «aaaaaaaaab / aaab», чтобы увидеть, где наивный алгоритм тратит лишние сравнения, а два других нет.</li>
+        <li>Попробуйте пример «aaaaaaaaab / aaab», чтобы увидеть, где наивный алгоритм тратит лишние сравнения, а остальные нет. Для деревьев и массива введите короткую строку (до 10–14 символов) — схема растёт быстро.</li>
       </ol>
     </details>
     </div>
@@ -142,14 +166,11 @@ abababc<mark>abab</mark>   → вхождение в позиции 7
 
   <div class="card">
     <div class="inputs">
-      <div><label for="T">Текст T</label><input type="text" id="T" value="abababcabababab" spellcheck="false"></div>
-      <div><label for="P">Образец P</label><input type="text" id="P" value="ababab" spellcheck="false"></div>
+      <div><label for="T" id="lblT">Текст T</label><input type="text" id="T" value="abababcabababab" spellcheck="false"></div>
+      <div><label for="P" id="lblP">Образец P</label><input type="text" id="P" value="ababab" spellcheck="false"></div>
     </div>
     <div class="err" id="err"></div>
-    <div class="tabs">
-      <button class="tab on" data-a="naive">Наивный</button>
-      <button class="tab" data-a="z">Z-алгоритм</button>
-      <button class="tab" data-a="kmp">Кнут–Моррис–Пратт</button>
+    <div class="tabs" id="tabsWrap"><div id="tabs" style="display:contents"></div>
       <select class="presets" id="presets"></select>
     </div>
   </div>
@@ -190,7 +211,7 @@ abababc<mark>abab</mark>   → вхождение в позиции 7
     <div class="card">
       <label>Об алгоритме</label>
       <div class="info" id="info"></div>
-      <div style="margin-top:12px"><label>Число сравнений символов на этих строках</label>
+      <div style="margin-top:12px" id="statsBox"><label>Число сравнений символов на этих строках</label>
         <table id="stats"></table></div>
     </div>
   </div>
@@ -244,6 +265,13 @@ function buildNaive(T, P) {
   return { frames: F, code: NAIVE_CODE };
 }
 
+const pickTerm = (a, b = '') => ['$', '#', '|', '§', '¤', '¶'].find(c => !a.includes(c) && !b.includes(c)) || '\u0001';
+function guardFrames(T, P, code) {
+  const F = [], st = { cmp: 0, found: [] }, push = mkPush(F, st);
+  push({ line: -1, msg: P ? 'Образец длиннее текста — вхождений нет.' : 'Образец пуст.', rows: [row('T', 0, cells(T, {}))] });
+  return { frames: F, code };
+}
+
 // ---------- Z-algorithm ----------
 const Z_CODE = [
   'S = P + "$" + T;   l = r = 0',
@@ -255,37 +283,34 @@ const Z_CODE = [
   '    if i + z > r:  l = i;  r = i + z',
   '// вхождение в T:  Z[i] == m  (i > m)  →  позиция i − m − 1',
 ];
-function buildZ(T, P) {
-  const m = P.length, F = [], st = { cmp: 0, found: [] }, push = mkPush(F, st);
-  if (!m || m > T.length) {
-    push({ line: -1, msg: m ? 'Образец длиннее текста — вхождений нет.' : 'Образец пуст.', rows: [row('T', 0, cells(T, {}))] });
-    return { frames: F, code: Z_CODE };
-  }
-  const sep = ['$', '#', '|', '§', '¤', '¶'].find(c => !T.includes(c) && !P.includes(c)) || '\u0001';
-  const S = P + sep + T, N = S.length, Z = new Array(N).fill(null);
+// Считает Z-массив строки S и пишет кадры. m — длина образца, если S = P + sep + T (иначе null).
+function zCompute(S, m, push, st, o) {
+  const N = S.length, Z = new Array(N).fill(null);
   let l = 0, r = 0;
-  const topRow = (h) => {
+  const ln = x => (o.fixedLine != null ? o.fixedLine : x);
+  const topRow = h => {
     const hh = {};
-    for (let k = 0; k < N; k++) add(hh, k, k < m ? 'pp' : k === m ? 'sep' : '');
-    st.found.forEach(p => { for (let k = 0; k < m; k++) add(hh, m + 1 + p + k, 'found'); });
+    if (m != null) {
+      for (let k = 0; k < N; k++) add(hh, k, k < m ? 'pp' : k === m ? 'sep' : '');
+      st.found.forEach(p => { for (let k = 0; k < m; k++) add(hh, m + 1 + p + k, 'found'); });
+    }
     for (let k = l; k < r; k++) add(hh, k, 'box');
     Object.keys(h).forEach(k => add(hh, k, h[k]));
-    return row(`S = P${sep}T`, 0, cells(S, hh));
+    return row(o.label, 0, cells(S, hh));
   };
-  const zRow = (h) => row('Z', 0, Z.map((v, k) => ({ ch: k === 0 ? '–' : v === null ? '·' : String(v), cls: h[k] || '' })));
-  const botRow = (i, h) => row(`S со сдвигом i=${i}`, i, cells(S.slice(0, N - i), h));
+  const zRow = h => row('Z', 0, Z.map((v, k) => ({ ch: k === 0 ? '–' : v === null ? '·' : String(v), cls: h[k] || '' })));
+  const botRow = (i, h) => row(`${o.name} со сдвигом i=${i}`, i, cells(S.slice(0, N - i), h));
   const frame = (i, z, cmpIdx, eq, hz, msg, line) => {
     const top = {}, bot = {};
     for (let k = 0; k < z; k++) { add(top, i + k, 'ok'); add(bot, k, 'ok'); }
     if (cmpIdx) { add(top, i + z, eq ? 'ok' : 'bad'); add(bot, z, eq ? 'ok' : 'bad'); }
-    push({ line, msg, vars: { i, l, r, z }, rows: [topRow(top), botRow(i, bot), zRow(hz)] });
+    push({ line: ln(line), msg, vars: { i, l, r, z }, rows: [topRow(top), botRow(i, bot), zRow(hz)] });
   };
-  push({ line: 0, msg: `Строим S = P + «${sep}» + T (длина ${N}); «${sep}» не встречается в строках, поэтому Z[i] ≤ m = ${m}. Z[i] — длина наибольшего общего префикса S и S[i..]. Образец найден в T там, где Z[i] = m. Окно [l, r) — самый правый найденный отрезок, совпадающий с префиксом S.`,
-    rows: [topRow({}), zRow({})], vars: { l, r } });
+  push({ line: ln(0), msg: o.intro, rows: [topRow({}), zRow({})], vars: { l, r } });
   const finish = (i, z, note, hz, cmpIdx, eq) => {
     Z[i] = z;
     let msg = note + `Z[${i}] = ${z}.`;
-    if (i > m && z === m) { st.found.push(i - m - 1); msg += ` Z[${i}] = m → вхождение в T в позиции ${i} − ${m} − 1 = ${i - m - 1}.`; }
+    if (m != null && i > m && z === m) { st.found.push(i - m - 1); msg += ` Z[${i}] = m → вхождение в T в позиции ${i} − ${m} − 1 = ${i - m - 1}.`; }
     let line = 5;
     if (i + z > r) { l = i; r = i + z; msg += ` Окно сдвигается: [l, r) = [${l}, ${r}).`; line = 6; }
     hz[i] = 'cur';
@@ -301,7 +326,7 @@ function buildZ(T, P) {
       }
       frame(i, z, false, false, { ...hz, [i]: 'cur' }, `i = ${i} внутри окна [${l}, ${r}); Z[${i - l}] = ${zi} ≥ r − i = ${r - i}. Берём z = r − i = ${z} без сравнений и пробуем расширить дальше.`, 3);
     }
-    let lastEq = false, did = false;
+    let reachedEnd = false, did = false;
     while (i + z < N) {
       st.cmp++; did = true;
       const eq = S[z] === S[i + z];
@@ -309,11 +334,18 @@ function buildZ(T, P) {
       if (eq) {
         frame(i, z, true, true, hz2, `i = ${i}: S[${z}] = ${q(S[z])} = S[${i + z}] = ${q(S[i + z])} — совпало, z = ${z + 1}.`, 4);
         z++;
-      } else { lastEq = false; finish(i, z, `i = ${i}: S[${z}] = ${q(S[z])} ≠ S[${i + z}] = ${q(S[i + z])} — расширение остановлено. `, hz, true, false); break; }
-      if (i + z >= N) { lastEq = true; }
+        if (i + z >= N) reachedEnd = true;
+      } else { finish(i, z, `i = ${i}: S[${z}] = ${q(S[z])} ≠ S[${i + z}] = ${q(S[i + z])} — расширение остановлено. `, hz, true, false); break; }
     }
-    if (!did || lastEq) finish(i, z, i + z >= N ? `i = ${i}: дошли до конца строки S. ` : '', hz, false, false);
+    if (!did || reachedEnd) finish(i, z, i + z >= N ? `i = ${i}: дошли до конца строки. ` : '', hz, false, false);
   }
+  return Z;
+}
+function buildZ(T, P) {
+  const n = T.length, m = P.length, F = [], st = { cmp: 0, found: [] }, push = mkPush(F, st);
+  if (!m || m > n) return guardFrames(T, P, Z_CODE);
+  const sep = pickTerm(T, P), S = P + sep + T;
+  zCompute(S, m, push, st, { label: `S = P${sep}T`, name: 'S', intro: `Строим S = P + «${sep}» + T (длина ${S.length}); «${sep}» не встречается в строках, поэтому Z[i] ≤ m = ${m}. Z[i] — длина наибольшего общего префикса S и S[i..]. Образец найден в T там, где Z[i] = m. Окно [l, r) — самый правый найденный отрезок, совпадающий с префиксом S.` });
   return { frames: F, code: Z_CODE };
 }
 
@@ -333,16 +365,12 @@ const KMP_CODE = [
   '    if T[i] == P[j]:  j++',
   '    if j == m:  report i − m + 1;  j = π[m−1]',
 ];
-function buildKMP(T, P) {
-  const n = T.length, m = P.length, F = [], st = { cmp: 0, found: [] }, push = mkPush(F, st);
-  if (!m || m > n) {
-    push({ line: -1, msg: m ? 'Образец длиннее текста — вхождений нет.' : 'Образец пуст.', rows: [row('T', 0, cells(T, {}))] });
-    return { frames: F, code: KMP_CODE };
-  }
-  const pi = new Array(m).fill(null); pi[0] = 0;
+function kmpPrefix(P, pi, push, st) {
+  const m = P.length;
   const piRow = h => row('π', 0, pi.map((v, k) => ({ ch: v === null ? '·' : String(v), cls: h[k] || '' })));
+  pi[0] = 0;
   push({ line: 1, msg: `Фаза 1. Префикс-функция π[i] — длина наибольшего собственного префикса P[0..i], совпадающего с его суффиксом (бордера). π[0] = 0 всегда.`,
-    rows: [row('P', 0, cells(P, {})), piRow({ 0: 'cur' })], vars: { i: 0 } });
+    rows: [row('P', 0, cells(P, { 0: 'done' })), piRow({ 0: 'cur' })], vars: { i: 0 } });
   for (let i = 1; i < m; i++) {
     let k = pi[i - 1];
     for (;;) {
@@ -361,7 +389,11 @@ function buildKMP(T, P) {
       if (eq || kOld === 0) break;
     }
   }
-  push({ line: 7, msg: `Префикс-функция готова: π = [${pi.join(', ')}]. Фаза 2. Идём по тексту один раз, указатель i никогда не возвращается назад; j — длина текущего совпавшего префикса P. При несовпадении j := π[j−1] — образец сдвигается без повторного сравнения уже совпавшего.`,
+}
+// Фаза поиска КМП. L — номера строк псевдокода: {intro, cmp, eq, found}
+function kmpSearch(T, P, pi, push, st, L) {
+  const n = T.length, m = P.length;
+  push({ line: L.intro, msg: `Фаза поиска. Префикс-функция готова: π = [${pi.join(', ')}]. Идём по тексту один раз, указатель i никогда не возвращается назад; j — длина текущего совпавшего префикса P. При несовпадении j := π[j−1] — образец сдвигается без повторного сравнения уже совпавшего.`,
     rows: [row('T', 0, cells(T, {})), row('P (j=0)', 0, cells(P, {})), row('π', 0, pi.map(v => ({ ch: String(v), cls: '' })))], vars: { i: 0, j: 0 } });
   const foundHL = () => { const h = {}; st.found.forEach(p => { for (let t = 0; t < m; t++) add(h, p + t, 'found'); }); return h; };
   let j = 0;
@@ -376,23 +408,575 @@ function buildKMP(T, P) {
       add(th, i, eq ? 'ok' : 'bad'); add(ph, j, eq ? 'ok' : 'bad');
       let msg = `i = ${i}, j = ${j}: T[${i}] = ${q(T[i])} ${eq ? '=' : '≠'} P[${j}] = ${q(P[j])}`, line;
       if (eq) {
-        j++; line = 11;
+        j++; line = L.eq;
         if (j === m) {
           msg += ` — совпал весь образец: вхождение в позиции ${i - m + 1}. Продолжаем с j := π[${m - 1}] = ${pi[m - 1]}.`;
-          hpi[m - 1] = 'ref'; for (let t = 0; t < pi[m - 1]; t++) add(hstat, t, 'ok'); j = pi[m - 1]; line = 12;
+          hpi[m - 1] = 'ref'; for (let t = 0; t < pi[m - 1]; t++) add(hstat, t, 'ok'); j = pi[m - 1]; line = L.found;
         } else msg += ` — совпало, j = ${j}.`;
       } else if (j > 0) {
         const nj = pi[j - 1];
         msg += ` — несовпадение: j := π[${j - 1}] = ${nj}. Образец сдвигается на ${j - nj}, T[${i}] сравним заново.`;
-        hpi[j - 1] = 'ref'; for (let t = 0; t < nj; t++) add(hstat, t, 'ok'); j = nj; line = 10;
-      } else { msg += ' — несовпадение при j = 0, переходим к следующему символу текста.'; line = 10; }
+        hpi[j - 1] = 'ref'; for (let t = 0; t < nj; t++) add(hstat, t, 'ok'); j = nj; line = L.cmp;
+      } else { msg += ' — несовпадение при j = 0, переходим к следующему символу текста.'; line = L.cmp; }
       push({ line, msg, vars: { i, j: jOld, 'j после': j }, rows: [
         row('T', 0, cells(T, th)), row(`P (сдвиг i−j=${i - jOld})`, i - jOld, cells(P, ph)), 'div',
         row('P', 0, cells(P, hstat)), row('π', 0, pi.map((v, t) => ({ ch: String(v), cls: hpi[t] || '' })))] });
       if (eq || jOld === 0) break;
     }
   }
+}
+function buildKMP(T, P) {
+  const n = T.length, m = P.length, F = [], st = { cmp: 0, found: [] }, push = mkPush(F, st);
+  if (!m || m > n) return guardFrames(T, P, KMP_CODE);
+  const pi = new Array(m).fill(null);
+  kmpPrefix(P, pi, push, st);
+  kmpSearch(T, P, pi, push, st, { intro: 7, cmp: 10, eq: 11, found: 12 });
   return { frames: F, code: KMP_CODE };
+}
+
+// ---------- KMP на Z-функции ----------
+const KMPZ_CODE = [
+  '// Фаза 1: Z-функция образца (как в Z-алгоритме)',
+  'Z = zfunction(P)',
+  '// Фаза 2: π из Z',
+  'π[0..m−1] = 0',
+  'for i = 1 .. m − 1:',
+  '    for t = Z[i] − 1 downto 0:',
+  '        if π[i+t] > 0:  break',
+  '        π[i+t] = t + 1',
+  '// Фаза 3: поиск (тот же, что в КМП)',
+  'j = 0',
+  'for i = 0 .. n − 1:',
+  '    while j > 0 and T[i] ≠ P[j]:  j = π[j−1]',
+  '    if T[i] == P[j]:  j++',
+  '    if j == m:  report i − m + 1;  j = π[m−1]',
+];
+function buildKMPZ(T, P) {
+  const n = T.length, m = P.length, F = [], st = { cmp: 0, found: [] }, push = mkPush(F, st);
+  if (!m || m > n) return guardFrames(T, P, KMPZ_CODE);
+  const Zp = zCompute(P, null, push, st, { label: 'P', name: 'P', fixedLine: 1,
+    intro: 'Фаза 1. Сначала считаем Z-функцию самого образца P (точно так же, как в Z-алгоритме, но только для P): Z[i] — длина наибольшего общего префикса P и P[i..]. Из неё в фазе 2 получим префикс-функцию π.' });
+  const pi = new Array(m).fill(0), got = new Array(m).fill(false);
+  const piRow = h => row('π', 0, pi.map((v, k) => ({ ch: got[k] ? String(v) : '·', cls: h[k] || '' })));
+  push({ line: 2, msg: 'Фаза 2. Получаем π из Z. Если Z[i] = z > 0, то P[i..i+z−1] = P[0..z−1]: для каждого t < z префикс длины t+1 заканчивается в позиции i+t, значит π[i+t] ≥ t+1. Идём по i слева направо и заполняем клетки справа налево (от более длинного к более короткому), пока не встретим уже занятую клетку.',
+    rows: [row('P', 0, cells(P, {})), piRow({})], vars: { i: 0 } });
+  for (let i = 1; i < m; i++) {
+    const z = Zp[i];
+    if (z === 0) continue;
+    const assigned = []; let stop = null;
+    for (let t = z - 1; t >= 0; t--) {
+      if (pi[i + t] > 0) { stop = i + t; break; }
+      pi[i + t] = t + 1; got[i + t] = true; assigned.push(i + t);
+    }
+    const top = {}, bot = {}, hpi = {};
+    for (let t = 0; t < z; t++) { add(top, i + t, 'ok'); add(bot, t, 'ok'); }
+    assigned.forEach(a => { hpi[a] = 'cur'; });
+    if (stop !== null) hpi[stop] = 'ref';
+    let msg = `i = ${i}, Z[${i}] = ${z}: префикс «${P.slice(0, z)}» повторяется с позиции ${i}. Заполняем π справа налево: ` +
+      (assigned.length ? assigned.map(a => `π[${a}] = ${pi[a]}`).join(', ') : 'ничего нового') + '.';
+    if (stop !== null) msg += ` В позиции ${stop} уже стоит π[${stop}] = ${pi[stop]} > 0 — это более длинный бордер, найденный раньше (от меньшего i), поэтому остальные клетки левее (более короткие бордеры) не трогаем.`;
+    push({ line: assigned.length ? 7 : 6, msg, vars: { i, z }, rows: [row('P', 0, cells(P, top)), row(`P со сдвигом i=${i}`, i, cells(P, bot)), piRow(hpi)] });
+  }
+  for (let k = 0; k < m; k++) got[k] = true;
+  push({ line: 3, msg: `π готов: [${pi.join(', ')}]. Клетки, которые не получили значение, равны 0 (Z[i] = 0 там, где ни один префикс не заканчивается). Дальше — обычный поиск КМП.`,
+    rows: [row('P', 0, cells(P, {})), piRow({})], vars: {} });
+  kmpSearch(T, P, pi, push, st, { intro: 8, cmp: 11, eq: 12, found: 13 });
+  return { frames: F, code: KMPZ_CODE };
+}
+
+// ---------- Boyer–Moore ----------
+const BM_CODE = [
+  '// предобработка: bc[c] — последняя позиция c в P;',
+  '//   gs[i] — сдвиг по правилу хорошего суффикса при несовпадении на позиции i',
+  's = 0',
+  'while s ≤ n − m:',
+  '    i = m − 1;  while i ≥ 0 and P[i] == T[s+i]:  i−−      // справа налево',
+  '    if i < 0:  report s;  s += gs[−1]',
+  '    else:  s += max(gs[i],  i − bc[T[s+i]])',
+];
+function buildBM(T, P) {
+  const n = T.length, m = P.length, F = [], st = { cmp: 0, found: [] }, push = mkPush(F, st);
+  if (!m || m > n) return guardFrames(T, P, BM_CODE);
+  // gs[i+1] — сдвиг при несовпадении на позиции i (i = −1: образец совпал целиком)
+  const gsDirect = i => {
+    for (let d = 1; d <= m; d++) {
+      let ok = true;
+      for (let k = i + 1; k < m && ok; k++) if (k - d >= 0 && P[k - d] !== P[k]) ok = false;
+      if (ok && i >= 0 && i - d >= 0 && P[i - d] === P[i]) ok = false;
+      if (ok) return d;
+    }
+    return m;
+  };
+  const gs = []; for (let i = -1; i < m; i++) gs.push(gsDirect(i));
+  const last = c => P.lastIndexOf(c);
+  const alpha = [...new Set(P)];
+  push({ line: 0, msg: `Бойер–Мур сравнивает образец с текстом СПРАВА НАЛЕВО и при несовпадении сдвигает образец сразу на несколько позиций, используя два правила: плохого символа и хорошего суффикса. Сначала предобработка образца P = «${P}».`,
+    rows: [row('T', 0, cells(T, {})), row('P', 0, cells(P, {}))], vars: {} });
+  push({ line: 0, msg: 'Правило плохого символа. Если в тексте на позиции несовпадения стоит символ c, то образец можно сдвинуть так, чтобы его последнее вхождение c оказалось под этим символом. Для этого храним последнюю позицию каждого символа в P (−1 — символа в P нет, тогда образец проходит целиком за него).',
+    rows: [row('P', 0, cells(P, {}))], table: { head: ['символ c', ...alpha], rows: [['bc[c] — последняя позиция в P', ...alpha.map(c => last(c))]], rowCls: {} }, vars: {} });
+  push({ line: 1, msg: `Правило хорошего суффикса. Если справа совпал суффикс u образца, а перед ним несовпадение, образец сдвигается к ближайшему слева другому вхождению u в P (с другим символом перед ним) либо, если такого нет, так, чтобы префикс P совпал с суффиксом u. gs[i] — этот сдвиг при несовпадении на позиции i; gs[−1] = ${gs[0]} — сдвиг после полного совпадения.`,
+    rows: [row('P', 0, cells(P, {})), row('gs[i]', 0, gs.slice(1).map(v => ({ ch: String(v), cls: '' })))], vars: { 'gs[−1]': gs[0] } });
+  const base = () => { const h = {}; st.found.forEach(p => { for (let k = 0; k < m; k++) add(h, p + k, 'found'); }); return h; };
+  let s = 0;
+  while (s <= n - m) {
+    for (let i = m - 1; i >= 0; i--) {
+      st.cmp++;
+      const eq = T[s + i] === P[i];
+      const full = eq && i === 0;
+      if (full) st.found.push(s);
+      const th = base(), ph = {};
+      for (let k = i + 1; k < m; k++) { add(th, s + k, 'ok'); add(ph, k, 'ok'); }
+      add(th, s + i, eq ? 'ok' : 'bad'); add(ph, i, eq ? 'ok' : 'bad');
+      let msg = (i === m - 1 ? `Сдвиг s = ${s}. ` : '') + `T[${s + i}] = ${q(T[s + i])} ${eq ? '=' : '≠'} P[${i}] = ${q(P[i])}`, line = 4, vars = { s, i };
+      let adv = 0;
+      if (full) {
+        adv = gs[0]; line = 5;
+        msg += ` — образец совпал целиком: вхождение в позиции ${s}. Сдвиг по gs[−1] = ${adv}.`;
+      } else if (eq) msg += ' — совпало, идём влево.';
+      else {
+        const c = T[s + i], p = last(c), d1 = i - p, d2 = gs[i + 1];
+        adv = Math.max(d1, d2, 1); line = 6;
+        msg += ` — несовпадение. Плохой символ: ${q(c)} ${p < 0 ? 'в P нет' : 'последний раз в P на позиции ' + p} → сдвиг ${d1 > 0 ? d1 : 'не помогает (' + d1 + ')'}. Хороший суффикс${i === m - 1 ? ' (суффикс пуст)' : ' «' + P.slice(i + 1) + '»'}: gs[${i}] = ${d2}. Берём максимум: сдвиг ${adv}.`;
+        vars = { s, i, 'bc': d1, 'gs': d2, 'сдвиг': adv };
+      }
+      push({ line, msg, vars, rows: [row('T', 0, cells(T, th)), row(`P (сдвиг s=${s})`, s, cells(P, ph))] });
+      if (!eq || full) { s += adv; break; }
+    }
+  }
+  return { frames: F, code: BM_CODE };
+}
+
+// ---------- Aho–Corasick ----------
+const AC_CODE = [
+  '// 1. Бор: вставить все образцы',
+  'для каждого образца w: идти из корня по символам w, создавая недостающие вершины;',
+  '    последняя вершина — терминальная',
+  '// 2. Суффиксные ссылки (обход бора в ширину)',
+  'fail(корень) = корень;  для детей корня fail = корень',
+  'для вершины v (родитель p, символ c):  f = fail(p)',
+  '    while f ≠ корень и нет ребра c из f:  f = fail(f)',
+  '    fail(v) = ребро c из f (если есть), иначе корень;   out(v) = слова в v ∪ out(fail(v))',
+  '// 3. Поиск',
+  'v = корень;   for i = 0 .. n−1:',
+  '    while v ≠ корень и нет ребра T[i] из v:  v = fail(v)',
+  '    если есть ребро T[i] из v:  v = ребро',
+  '    сообщить все слова из out(v)  (они заканчиваются в позиции i)',
+];
+function buildAC(T, Praw) {
+  const n = T.length;
+  const pats = [...new Set(Praw.split(/[\s,;]+/).filter(Boolean))];
+  const F = [], st = { cmp: 0, found: [] }, push = mkPush(F, st);
+  if (!pats.length) {
+    push({ line: -1, msg: 'Не задано ни одного образца.', rows: [row('T', 0, cells(T, {}))] });
+    return { frames: F, code: AC_CODE, final: 'Образцы не заданы.' };
+  }
+  const nd = [{ id: 0, ch: '', par: -1, next: new Map(), own: [], out: [], fail: 0, str: '', outDone: false }];
+  const occ = [], failShown = new Set();
+  const textRow = h => { const hh = { ...h }; occ.forEach(o => { for (let k = 0; k < o.len; k++) add(hh, o.p + k, 'found'); }); return row('T', 0, cells(T, hh)); };
+  const model = (hl = {}) => {
+    const nodes = nd.map(v => ({ id: v.id, label: v.id === 0 ? 'ε' : String(v.id), shape: 'int', term: v.own.length > 0,
+      sub: (v.outDone ? v.out : v.own).join(','), cls: (hl.n && hl.n[v.id]) || '' }));
+    const edges = nd.filter(v => v.id).map(v => ({ from: v.par, to: v.id, label: v.ch, cls: (hl.e && hl.e[v.id]) || '' }));
+    [...failShown].filter(id => nd[id].fail !== 0).forEach(id => edges.push({ from: id, to: nd[id].fail, kind: 'link', cls: (hl.l && hl.l[id]) || '' }));
+    return { root: 0, nodes, edges, xs: 56 };
+  };
+  // Фаза 1: бор
+  pats.forEach((w, wi) => {
+    let cur = 0;
+    for (let k = 0; k < w.length; k++) {
+      const c = w[k]; let isNew = false;
+      if (!nd[cur].next.has(c)) {
+        const v = { id: nd.length, ch: c, par: cur, next: new Map(), own: [], out: [], fail: 0, str: nd[cur].str + c, outDone: false };
+        nd.push(v); nd[cur].next.set(c, v.id); isNew = true;
+      }
+      const to = nd[cur].next.get(c), last = k === w.length - 1;
+      if (last) nd[to].own.push(w);
+      const ph = {}; for (let t = 0; t <= k; t++) add(ph, t, 'ok');
+      push({ line: last ? 2 : 1, msg: `Образец «${w}», символ ${q(c)}: из вершины ${cur} ` + (isNew ? `ребра нет — создаём вершину ${to}.` : `ребро уже есть — идём в вершину ${to} (общий префикс с предыдущими образцами).`) + (last ? ` Конец слова: вершина ${to} терминальная (двойной контур), в ней хранится «${w}».` : ''),
+        vars: { 'образец': wi + 1, 'символ': k + 1 }, noCmp: true,
+        rows: [textRow({}), row(`образец ${wi + 1}`, 0, cells(w, ph))], tree: model({ n: { [to]: isNew ? 'new' : 'cur' }, e: { [to]: isNew ? 'new' : 'cur' } }),
+        caption: 'Бор (trie): рёбра подписаны символами, двойной контур — конец образца.' });
+      cur = to;
+    }
+  });
+  // Фаза 2: суффиксные ссылки
+  const depth1 = [...nd[0].next.values()];
+  depth1.forEach(v => { nd[v].out = nd[v].own.slice(); nd[v].outDone = true; });
+  nd[0].outDone = true;
+  push({ line: 4, msg: 'Фаза 2. Суффиксная ссылка fail(v) ведёт в вершину, соответствующую самому длинному СОБСТВЕННОМУ суффиксу строки v, который является префиксом какого-то образца (т.е. есть в боре). Для корня и его детей fail = корень (ссылки в корень не рисуем). Остальные вершины обходим в ширину — по уровням, чтобы ссылки более коротких вершин были уже готовы.',
+    vars: {}, noCmp: true, rows: [textRow({})], tree: model({ n: Object.fromEntries(depth1.map(v => [v, 'ok'])) }),
+    caption: 'Пунктир — суффиксная ссылка fail.' });
+  const queue = depth1.slice();
+  while (queue.length) {
+    const u = queue.shift();
+    for (const [c, v] of nd[u].next) {
+      let f = nd[u].fail; const chain = [f];
+      let desc = `Вершина ${v} («${nd[v].str}»): пришли из ${u} по ${q(c)}. Берём fail(${u}) = ${f}`;
+      while (f !== 0 && !nd[f].next.has(c)) { const nf = nd[f].fail; desc += `; из вершины ${f} ребра ${q(c)} нет → fail(${f}) = ${nf}`; f = nf; chain.push(f); }
+      const has = nd[f].next.has(c), target = has ? nd[f].next.get(c) : 0;
+      desc += has ? `; из вершины ${f} ребро ${q(c)} есть → fail(${v}) = ${target} («${nd[target].str}»).` : `; из корня ребра ${q(c)} нет → fail(${v}) = корень.`;
+      nd[v].fail = target; failShown.add(v);
+      nd[v].out = nd[v].own.concat(nd[target].out); nd[v].outDone = true;
+      if (nd[v].out.length) desc += ` Выход вершины ${v}: {${nd[v].out.join(', ')}}` + (nd[target].out.length ? ' (часть унаследована по ссылке).' : '.');
+      const hn = { [v]: 'cur' }; chain.forEach(x => { hn[x] = 'ref'; }); hn[target] = 'ok'; hn[v] = 'cur';
+      push({ line: 7, msg: desc, vars: { v, 'fail': target }, noCmp: true, rows: [textRow({})], tree: model({ n: hn, l: { [v]: 'cur' } }),
+        caption: 'Пунктир — суффиксная ссылка fail. Под вершиной — множество слов out(v).' });
+      queue.push(v);
+    }
+  }
+  // Фаза 3: поиск
+  const lastFrame = () => F[F.length - 1];
+  push({ line: 8, msg: 'Фаза 3. Читаем текст слева направо. Состояние v — вершина бора, строка которой — самый длинный суффикс прочитанного текста, являющийся префиксом какого-то образца. Нет ребра по символу — идём по fail, пока не найдём (или не придём в корень). После перехода выписываем все слова из out(v).',
+    vars: { v: 0 }, noCmp: true, rows: [textRow({})], tree: model({ n: { 0: 'cur' } }), caption: 'Пунктир — суффиксная ссылка fail.' });
+  let v = 0;
+  for (let i = 0; i < n; i++) {
+    const c = T[i];
+    for (;;) {
+      st.cmp++;
+      const ctx = vv => { const hh = {}; for (let k = 0; k < nd[vv].str.length; k++) add(hh, i - nd[vv].str.length + 1 + k, 'ok'); add(hh, i, 'cur'); return hh; };
+      if (nd[v].next.has(c)) {
+        const to = nd[v].next.get(c); const from = v; v = to;
+        const outs = nd[v].out;
+        outs.forEach(w => { const p = i - w.length + 1; occ.push({ p, len: w.length }); st.found.push(`${w} (${p})`); });
+        const hn = { [v]: 'cur' }; if (outs.length) hn[v] = 'found';
+        push({ line: outs.length ? 12 : 11, msg: `i = ${i}, T[${i}] = ${q(c)}: из вершины ${from} есть ребро ${q(c)} → переходим в вершину ${v} («${nd[v].str}»).` + (outs.length ? ` Выход: ${outs.map(w => `«${w}» (позиция ${i - w.length + 1})`).join(', ')}.` : ''),
+          vars: { i, 'состояние': v }, rows: [textRow(ctx(v))], tree: model({ n: hn }), caption: 'Пунктир — суффиксная ссылка fail.' });
+        break;
+      }
+      if (v === 0) {
+        push({ line: 11, msg: `i = ${i}, T[${i}] = ${q(c)}: из корня ребра ${q(c)} нет — остаёмся в корне.`, vars: { i, 'состояние': 0 }, rows: [textRow(ctx(0))], tree: model({ n: { 0: 'cur' } }), caption: 'Пунктир — суффиксная ссылка fail.' });
+        break;
+      }
+      const nf = nd[v].fail;
+      push({ line: 10, msg: `i = ${i}, T[${i}] = ${q(c)}: из вершины ${v} («${nd[v].str}») ребра ${q(c)} нет → идём по суффиксной ссылке: fail(${v}) = ${nf}. Символ T[${i}] проверим заново.`,
+        vars: { i, 'состояние': v }, rows: [textRow(ctx(v))], tree: model({ n: { [v]: 'bad', [nf]: 'ref' }, l: { [v]: 'cur' } }), caption: 'Пунктир — суффиксная ссылка fail.' });
+      v = nf;
+    }
+  }
+  const final = occ.length ? `Готово. Найдено вхождений: ${occ.length}: ${st.found.join(', ')} (слово и позиция начала, нумерация с 0).` : 'Готово. Ни один образец в тексте не найден.';
+  return { frames: F, code: AC_CODE, final };
+}
+
+// ---------- деревья: общие функции ----------
+function mkTreeModel(nodes, S, curEnd, hl, withLinks) {
+  const N = S.length, h = hl || {};
+  const model = { root: 0, nodes: [], edges: [], xs: 74 };
+  nodes.forEach(n => model.nodes.push({ id: n.id, label: n.leaf != null ? String(n.leaf) : n.id === 0 ? 'R' : String(n.id),
+    shape: n.leaf != null ? 'leaf' : 'int', cls: (h.n && h.n[n.id]) || '' }));
+  nodes.forEach(n => n.edges.forEach(e => {
+    const end = e.end === null ? curEnd : e.end;
+    model.edges.push({ from: n.id, to: e.to, label: S.slice(e.start, end) + (e.end === null && end < N ? '…' : ''), cls: (h.e && h.e[e.to]) || '' });
+  }));
+  if (withLinks) nodes.filter(n => n.id !== 0 && n.leaf == null && n.link).forEach(n => model.edges.push({ from: n.id, to: n.link, kind: 'link', cls: '' }));
+  return model;
+}
+function leavesUnder(nodes, id, acc = []) {
+  if (nodes[id].leaf != null) acc.push(nodes[id].leaf);
+  nodes[id].edges.forEach(e => leavesUnder(nodes, e.to, acc));
+  return acc;
+}
+// Поиск образца P в готовом дереве; возвращает итоговое сообщение
+function treeSearch(nodes, S, S0, P, push, st, model, lines) {
+  const m = P.length;
+  if (!m) return 'Образец для поиска не задан.';
+  const N = S.length;
+  const pathE = {}, pathN = { 0: 'cur' };
+  const sRow = h => row('S', 0, cells(S, h));
+  const pRow = h => row('P', 0, cells(P, h));
+  push({ line: lines, msg: `Поиск образца «${P}». Идём от корня: на каждом шаге выбираем ребро, начинающееся с очередного символа P, и сравниваем символы вдоль ребра. Если P закончился, все листья под этой точкой — вхождения (номер листа = позиция начала суффикса).`,
+    vars: {}, noCmp: true, rows: [sRow({}), pRow({})], tree: model({ n: pathN, e: pathE }) });
+  let v = 0, pos = 0;
+  for (;;) {
+    const c = P[pos];
+    const e = nodes[v].edges.find(x => S[x.start] === c);
+    if (!e) {
+      st.cmp++;
+      const ph = {}; for (let t = 0; t < pos; t++) add(ph, t, 'ok'); add(ph, pos, 'bad');
+      push({ line: lines, msg: `Из вершины ${v === 0 ? '«корень»' : v} нет ребра, начинающегося с ${q(c)} → образца «${P}» в строке нет.`, vars: { pos }, noCmp: true, rows: [sRow({}), pRow(ph)], tree: model({ n: pathN, e: pathE }) });
+      return `Готово. Образца «${P}» в строке нет.`;
+    }
+    const len = e.end - e.start; let k = 0;
+    while (k < len && pos + k < m && S[e.start + k] === P[pos + k]) { k++; st.cmp++; }
+    const ph = {}; for (let t = 0; t < pos + k; t++) add(ph, t, 'ok');
+    const sh = {}; for (let t = 0; t < k; t++) add(sh, e.start + t, 'ok');
+    pathE[e.to] = 'cur';
+    if (pos + k === m) {
+      const leaves = leavesUnder(nodes, e.to).sort((a, b) => a - b).filter(x => x + m <= N - 1);
+      const sub = (id, f) => { f(id); nodes[id].edges.forEach(x => { pathE[x.to] = 'found'; sub(x.to, f); }); };
+      sub(e.to, id => { pathN[id] = 'found'; });
+      pathE[e.to] = 'found';
+      const fh = {}; leaves.forEach(p => { for (let t = 0; t < m; t++) add(fh, p + t, 'found'); });
+      st.found = leaves;
+      push({ line: lines, msg: `Образец «${P}» прочитан целиком (ребро «${S.slice(e.start, e.end)}», совпало ${k} симв.). Листья под этой точкой — суффиксы, начинающиеся с «${P}»: позиции ${leaves.join(', ')}.`, vars: {}, noCmp: true, rows: [sRow(fh), pRow(ph)], tree: model({ n: pathN, e: pathE }) });
+      return `Готово. Вхождения «${P}»: позиции ${leaves.join(', ')} (нумерация с 0).`;
+    }
+    if (k < len) {
+      ph[pos + k] = 'bad';
+      push({ line: lines, msg: `Ребро «${S.slice(e.start, e.end)}»: совпало ${k} симв., затем ${q(P[pos + k])} ≠ ${q(S[e.start + k])} → образца «${P}» в строке нет.`, vars: {}, noCmp: true, rows: [sRow(sh), pRow(ph)], tree: model({ n: pathN, e: pathE }) });
+      return `Готово. Образца «${P}» в строке нет.`;
+    }
+    push({ line: lines, msg: `Ребро «${S.slice(e.start, e.end)}» совпало целиком (${len} симв.) — идём в вершину ${e.to}, прочитано ${pos + k} из ${m} символов P.`, vars: {}, noCmp: true, rows: [sRow(sh), pRow(ph)], tree: model({ n: pathN, e: pathE }) });
+    pathN[e.to] = 'cur'; pos += len; v = e.to;
+  }
+}
+
+// ---------- Суффиксное дерево (по вставке суффиксов) ----------
+const ST_CODE = [
+  'S = S + "$"      // уникальный терминатор: ни один суффикс не префикс другого',
+  'root = новая вершина',
+  'for i = 0 .. |S| − 1:                 // вставляем суффикс S[i..]',
+  '    v = root;  p = i',
+  '    loop:  e = ребро из v, начинающееся с S[p]',
+  '        если e нет:  добавить лист (суффикс i);  break',
+  '        если метка e совпала целиком:  v = конец e;  p += |метка|',
+  '        иначе:  разрезать e в первом расхождении;  добавить внутреннюю вершину и лист;  break',
+  '// Поиск P: идём от корня; если P закончился — все листья ниже = вхождения',
+];
+function buildSTree(S0, P) {
+  const term = pickTerm(S0, P), S = S0 + term, N = S.length;
+  const F = [], st = { cmp: 0, found: [] }, push = mkPush(F, st);
+  const nodes = [{ id: 0, edges: [], leaf: null }];
+  const ord = c => (c === term ? -1 : c.charCodeAt(0));
+  const sortE = v => nodes[v].edges.sort((a, b) => ord(S[a.start]) - ord(S[b.start]));
+  const model = hl => mkTreeModel(nodes, S, N, hl, false);
+  const sRow = h => row('S', 0, cells(S, h));
+  push({ line: 0, msg: `Суффиксное дерево — сжатый бор всех суффиксов строки. К S = «${S0}» дописываем терминатор «${term}» (его нет в строке), чтобы ни один суффикс не был префиксом другого — тогда у каждого суффикса будет свой лист. Вставляем суффиксы по одному: S[0..], S[1..], …`,
+    vars: {}, noCmp: true, rows: [sRow({})], tree: model({}), caption: 'Квадратик — лист, число внутри — номер суффикса. Подписи рёбер — подстроки S.' });
+  const name = v => (v === 0 ? 'корня' : 'вершины ' + v);
+  for (let i = 0; i < N; i++) {
+    let v = 0, p = i; const log = [], hl = { n: {}, e: {} }; let line = 4;
+    for (;;) {
+      const c = S[p];
+      const e = nodes[v].edges.find(x => S[x.start] === c);
+      if (!e) {
+        const lf = { id: nodes.length, edges: [], leaf: i }; nodes.push(lf);
+        nodes[v].edges.push({ start: p, end: N, to: lf.id }); sortE(v);
+        log.push(`из ${name(v)} нет ребра на ${q(c)} → новый лист ${i} с меткой «${S.slice(p)}»`);
+        hl.n[lf.id] = 'new'; hl.e[lf.id] = 'new'; line = 5; break;
+      }
+      const len = e.end - e.start; let k = 0;
+      while (k < len && S[e.start + k] === S[p + k]) k++;
+      if (k === len) { log.push(`ребро «${S.slice(e.start, e.end)}» совпало целиком → идём дальше`); v = e.to; p += len; continue; }
+      const mid = { id: nodes.length, edges: [], leaf: null }; nodes.push(mid);
+      const old = { start: e.start + k, end: e.end, to: e.to };
+      const oldLabel = S.slice(e.start, e.end);
+      e.end = e.start + k; e.to = mid.id;
+      const lf = { id: nodes.length, edges: [], leaf: i }; nodes.push(lf);
+      mid.edges.push(old, { start: p + k, end: N, to: lf.id }); sortE(mid.id); sortE(v);
+      log.push(`ребро «${oldLabel}» совпало только на ${k} симв. («${S.slice(e.start, e.end)}»), дальше ${q(S[p + k])} ≠ ${q(S[old.start])} → разрезаем: новая внутренняя вершина ${mid.id}, от неё старый хвост «${S.slice(old.start, old.end)}» и новый лист ${i} с меткой «${S.slice(p + k)}»`);
+      hl.n[mid.id] = 'new'; hl.n[lf.id] = 'new'; hl.e[mid.id] = 'new'; hl.e[lf.id] = 'new'; hl.e[old.to] = 'ref'; line = 7; break;
+    }
+    const sh = {}; for (let k = i; k < N; k++) add(sh, k, 'cur');
+    push({ line, msg: `Суффикс ${i} = «${S.slice(i)}»: ` + log.join('; ') + '.', vars: { i }, noCmp: true, rows: [sRow(sh)], tree: model(hl), caption: 'Зелёное — новое в этом шаге, фиолетовое — оставшийся «хвост» разрезанного ребра.' });
+  }
+  push({ line: 2, msg: `Дерево готово: ${N} листьев (по одному на суффикс) и не более ${N - 1} внутренних вершин. Метки рёбер хранятся как пары индексов (начало, конец) в S, поэтому память O(n). Обход листьев слева направо даёт суффиксы в алфавитном порядке — это и есть суффиксный массив.`,
+    vars: {}, noCmp: true, rows: [sRow({})], tree: model({}) });
+  const tree = model({});
+  const final = treeSearch(nodes, S, S0, P, push, st, model, 8);
+  return { frames: F, code: ST_CODE, final, tree };
+}
+
+// ---------- Алгоритм Укконена ----------
+const UKK_CODE = [
+  'S = S + "$";  активная точка = (корень, —, 0);  remainder = 0',
+  'for i = 0 .. |S| − 1:                 // фаза i: добавляем S[i]',
+  '    remainder++;  lastNew = ∅',
+  '    while remainder > 0:',
+  '        если активная длина ≥ длины ребра:  спуститься в конец ребра',
+  '        если S[i] нет в активной точке:',
+  '            создать лист (из вершины) или разрезать ребро + лист;  lastNew → новая вершина (суффиксная ссылка)',
+  '        иначе (правило 3):  активная длина++;  связать lastNew;  break     // фаза окончена',
+  '        remainder−−',
+  '        если активная вершина = корень и длина > 0:  длина−−;  активное ребро = i − remainder + 1',
+  '        иначе:  активная вершина = суффиксная ссылка (или корень)',
+  '// листья — открытые рёбра (конец = «текущий i + 1»), они растут сами (правило 1)',
+];
+function buildUkk(S0, P) {
+  const term = pickTerm(S0, P), S = S0 + term, N = S.length;
+  const F = [], st = { cmp: 0, found: [] }, push = mkPush(F, st);
+  const nodes = [{ id: 0, edges: [], leaf: null, link: 0 }];
+  let an = 0, ae = 0, al = 0, rem = 0, cur = 0;
+  const ord = c => (c === term ? -1 : c.charCodeAt(0));
+  const edgeOf = (v, ch) => nodes[v].edges.find(e => S[e.start] === ch);
+  const endOf = e => (e.end === null ? cur + 1 : e.end);
+  const sortE = v => nodes[v].edges.sort((a, b) => ord(S[a.start]) - ord(S[b.start]));
+  const nm = v => (v === 0 ? 'корень' : 'вершина ' + v);
+  const newLeaf = idx => { const x = { id: nodes.length, edges: [], leaf: idx, link: 0 }; nodes.push(x); return x.id; };
+  const newInt = () => { const x = { id: nodes.length, edges: [], leaf: null, link: 0 }; nodes.push(x); return x.id; };
+  const model = hl => mkTreeModel(nodes, S, cur + 1, hl, true);
+  const frame = (msg, line, hl = {}) => {
+    const h = { n: { ...(hl.n || {}) }, e: { ...(hl.e || {}) } };
+    h.n[an] = (h.n[an] ? h.n[an] + ' ' : '') + 'cur';
+    if (al > 0) { const e = edgeOf(an, S[ae]); if (e) h.e[e.to] = (h.e[e.to] ? h.e[e.to] + ' ' : '') + 'cur'; }
+    const sh = {};
+    for (let k = 0; k < N; k++) if (k > cur) add(sh, k, 'done');
+    if (rem > 0) for (let k = cur - rem + 1; k <= cur; k++) add(sh, k, 'ok');
+    add(sh, cur, 'cur');
+    push({ line, msg, noCmp: true, vars: { 'фаза i': cur, 'активная вершина': an === 0 ? 'корень' : an, 'активное ребро': al > 0 ? q(S[ae]) : '—', 'активная длина': al, remainder: rem },
+      rows: [row('S', 0, cells(S, sh))], tree: model(h), caption: 'Синий — активная точка. Пунктир — суффиксная ссылка. «…» на метке листа — открытый конец (растёт с каждой фазой). Зелёные символы S — суффиксы, ещё не вставленные явно (remainder).' });
+  };
+  push({ line: 0, msg: `Алгоритм Укконена строит суффиксное дерево ОНЛАЙН за O(n): обрабатывает символы S = «${S}» по одному и после каждого символа держит дерево всех суффиксов префикса S[0..i] (неявное дерево). «Активная точка» (вершина, ребро, длина) — место, где вставляется следующий суффикс; remainder — сколько суффиксов ещё не вставлено явно.`,
+    vars: {}, noCmp: true, rows: [row('S', 0, cells(S, {}))], tree: model({}), caption: '' });
+  const advance = i => {
+    rem--;
+    if (an === 0 && al > 0) { al--; ae = i - rem + 1; return `Активная точка: корень остаётся, длина уменьшается до ${al}, следующий суффикс начинается с позиции ${i - rem + 1}.`; }
+    if (an !== 0) { an = nodes[an].link; return `Переходим по суффиксной ссылке: активная вершина — ${nm(an)}.`; }
+    return '';
+  };
+  for (let i = 0; i < N; i++) {
+    cur = i; const c = S[i]; rem++; let lastNew = null;
+    frame(`Фаза ${i}: добавляем символ S[${i}] = ${q(c)}. Все существующие листья автоматически удлиняются на этот символ (открытые концы, правило 1). remainder = ${rem}: осталось вставить явно ${rem} суф. (последние ${rem} символов, зелёные).`, 1);
+    while (rem > 0) {
+      if (al === 0) ae = i;
+      const e = edgeOf(an, S[ae]), sj = i - rem + 1;
+      if (!e) {
+        const lf = newLeaf(sj); nodes[an].edges.push({ start: i, end: null, to: lf }); sortE(an);
+        let note = '';
+        if (lastNew !== null) { nodes[lastNew].link = an; note = ` Суффиксная ссылка: вершина ${lastNew} → ${nm(an)}.`; lastNew = null; }
+        const from = an, adv = advance(i);
+        frame(`Суффикс ${sj} («${S.slice(sj, i + 1)}»): из ${nm(from)} нет ребра на ${q(c)} → создаём лист ${sj} (правило 2).${note} ${adv}`, 5, { n: { [lf]: 'new' }, e: { [lf]: 'new' } });
+        continue;
+      }
+      const elen = endOf(e) - e.start;
+      if (al >= elen) {
+        ae += elen; al -= elen; an = e.to;
+        frame(`Активная длина ≥ длины ребра (${elen}): спускаемся в ${nm(an)} (walk-down). Активная длина = ${al}.`, 4);
+        continue;
+      }
+      if (S[e.start + al] === c) {
+        let note = '';
+        if (lastNew !== null && an !== 0) { nodes[lastNew].link = an; note = ` Суффиксная ссылка: вершина ${lastNew} → ${nm(an)}.`; }
+        al++;
+        frame(`Символ ${q(c)} уже стоит на ребре в активной точке → суффикс «${S.slice(sj, i + 1)}» уже неявно присутствует в дереве (правило 3). Ничего не создаём, активная длина = ${al}. Фаза ${i} заканчивается: более короткие суффиксы тоже уже есть, они остаются в remainder = ${rem}.${note}`, 7);
+        break;
+      }
+      const mid = newInt(), oldLabel = S.slice(e.start, endOf(e));
+      const old = { start: e.start + al, end: e.end, to: e.to };
+      e.end = e.start + al; e.to = mid;
+      nodes[mid].edges.push(old);
+      const lf = newLeaf(sj); nodes[mid].edges.push({ start: i, end: null, to: lf }); sortE(mid);
+      let note = '';
+      if (lastNew !== null) { nodes[lastNew].link = mid; note = ` Суффиксная ссылка: вершина ${lastNew} → вершина ${mid}.`; }
+      lastNew = mid;
+      const adv = advance(i);
+      frame(`Суффикс ${sj} («${S.slice(sj, i + 1)}»): на ребре «${oldLabel}» после ${e.end - e.start} симв. стоит ${q(S[old.start])} ≠ ${q(c)} → разрезаем ребро: внутренняя вершина ${mid} и новый лист ${sj} (правило 2).${note} ${adv}`, 6, { n: { [mid]: 'new', [lf]: 'new' }, e: { [mid]: 'new', [lf]: 'new', [old.to]: 'ref' } });
+    }
+  }
+  nodes.forEach(n => n.edges.forEach(e => { if (e.end === null) e.end = N; }));
+  rem = 0; an = 0; al = 0; cur = N - 1;
+  push({ line: 11, msg: `Готово: после терминатора «${term}» все суффиксы вставлены явно (remainder = 0) — дерево явное и совпадает с суффиксным деревом. Всего ${N} листьев, каждый лист создан ровно один раз, а активная точка только «ползёт» вперёд — отсюда O(n).`,
+    vars: {}, noCmp: true, rows: [row('S', 0, cells(S, {}))], tree: model({}) });
+  const tree = model({});
+  const final = treeSearch(nodes, S, S0, P, push, st, model, 11);
+  return { frames: F, code: UKK_CODE, final, tree };
+}
+
+// ---------- Суффиксный массив ----------
+const SA_CODE = [
+  'S = S + "$"',
+  'rank[i] = порядок символа S[i]',
+  'k = 1',
+  'пока не все ранги различны:',
+  '    ключ(i) = (rank[i], rank[i+k]);  отсортировать суффиксы по ключу',
+  '    rank = новый ранг (равные ключи — равные ранги);  k *= 2',
+  'SA = суффиксы в порядке рангов',
+  '// LCP (алгоритм Касаи): при переходе i → i+1 значение h убывает не более чем на 1',
+  'h = 0;  for i = 0 .. n−1:  j = SA[rank[i]−1];  растим h, пока S[i+h] == S[j+h];  lcp[rank[i]] = h;  h = max(h−1, 0)',
+  '// Поиск P двоичным поиском по SA',
+  'lo = первый r: S[SA[r]..][:m] ≥ P;   hi = первый r: S[SA[r]..][:m] > P;   ответ — SA[lo..hi)',
+];
+function buildSA(S0, P) {
+  const term = pickTerm(S0, P), S = S0 + term, N = S.length;
+  const F = [], st = { cmp: 0, found: [] }, push = mkPush(F, st);
+  const ord = c => (c === term ? -1 : c.charCodeAt(0));
+  const sRow = h => row('S', 0, cells(S, h));
+  const pushT = (o, head, rows, rowCls, caption) => push({ vars: {}, noCmp: true, ...o, table: { head, rows, rowCls: rowCls || {}, caption } });
+  const chars = [...new Set(S)].sort((a, b) => ord(a) - ord(b));
+  let rank = Array.from(S, c => chars.indexOf(c)), distinct = chars.length;
+  const classes = (idx, rk) => { const cnt = {}; idx.forEach(i => { cnt[rk[i]] = (cnt[rk[i]] || 0) + 1; }); const rc = {}; idx.forEach((i, t) => { rc[t] = cnt[rk[i]] > 1 ? 'ref' : 'ok'; }); return rc; };
+  push({ line: 0, msg: `Суффиксный массив SA — номера всех суффиксов строки в алфавитном порядке. К S = «${S0}» дописываем терминатор «${term}» (он считается самым маленьким символом). Построим SA удвоением префиксов: сначала сортируем суффиксы по 1-му символу, затем по первым 2, 4, 8 … символам, используя ранги предыдущего раунда.`,
+    vars: {}, noCmp: true, rows: [sRow({})] });
+  let idx = [...Array(N).keys()].sort((a, b) => rank[a] - rank[b] || a - b);
+  pushT({ line: 1, msg: `Раунд 0: сортируем суффиксы по первому символу, ранг — номер символа в алфавите. Зелёные ранги уже уникальны, фиолетовые — суффиксы с одинаковым началом, их надо различать дальше.`, rows: [sRow({})] },
+    ['место', 'i', 'суффикс', 'ключ', 'ранг'], idx.map((i, t) => [t, i, S.slice(i), S[i], rank[i]]), classes(idx, rank));
+  let k = 1;
+  while (distinct < N) {
+    const key = i => [rank[i], i + k < N ? rank[i + k] : -1];
+    idx = [...Array(N).keys()].sort((a, b) => key(a)[0] - key(b)[0] || key(a)[1] - key(b)[1] || a - b);
+    const nr = new Array(N); let r = 0; nr[idx[0]] = 0;
+    for (let t = 1; t < N; t++) { const a = key(idx[t - 1]), b = key(idx[t]); if (a[0] !== b[0] || a[1] !== b[1]) r++; nr[idx[t]] = r; }
+    const rows = idx.map((i, t) => [t, i, S.slice(i), `(${key(i)[0]}, ${key(i)[1] < 0 ? '∅' : key(i)[1]})`, nr[i]]);
+    rank = nr; distinct = r + 1;
+    pushT({ line: 4, msg: `Раунд: k = ${k}. Ключ суффикса i — пара (rank[i], rank[i+${k}]): ранг первых ${k} символов и ранг следующих ${k} (∅ — суффикс короче). Сортируем по ключу — получаем порядок по первым ${2 * k} символам. Равные ключи — равные ранги. ` + (distinct === N ? 'Все ранги различны — SA готов.' : `Различных рангов: ${distinct} из ${N}, продолжаем.`), rows: [sRow({})] },
+      ['место', 'i', 'суффикс', 'ключ', 'новый ранг'], rows, classes(idx, rank));
+    k *= 2;
+  }
+  const sa = [...Array(N).keys()].sort((a, b) => rank[a] - rank[b]);
+  const lcp = new Array(N).fill(null); lcp[0] = 0;
+  const saRows = () => sa.map((i, r) => [r, i, S.slice(i), lcp[r] === null ? '·' : r === 0 ? '–' : lcp[r]]);
+  pushT({ line: 6, msg: `SA = [${sa.join(', ')}]: суффиксы, выписанные в порядке рангов. Зная SA, подстроку можно искать двоичным поиском: все суффиксы, начинающиеся с P, идут в SA подряд.`, rows: [sRow({})] },
+    ['r', 'SA[r]', 'суффикс', 'LCP'], saRows(), {});
+  // LCP по Касаи
+  let h = 0;
+  for (let i = 0; i < N; i++) {
+    const r = rank[i];
+    if (r === 0) { h = 0; continue; }
+    const j = sa[r - 1], h0 = h;
+    while (i + h < N && j + h < N && S[i + h] === S[j + h]) h++;
+    lcp[r] = h;
+    const a = {}, b = {};
+    for (let t = 0; t < h; t++) { add(a, t, 'ok'); add(b, t, 'ok'); }
+    if (i + h < N) add(a, h, 'bad'); if (j + h < N) add(b, h, 'bad');
+    pushT({ line: 8, msg: `Суффикс i = ${i} («${S.slice(i)}»), в SA на месте ${r}; предыдущий в SA — суффикс ${j} («${S.slice(j)}»). ` + (h0 > 0 ? `Из предыдущего шага известно, что общий префикс уже не меньше ${h0}, поэтому начинаем сравнение с h = ${h0}` : 'Начинаем с h = 0') + `, растим до первого несовпадения: LCP = ${h}.`,
+      vars: { i, h: h }, rows: [row(`S[${i}..]`, 0, cells(S.slice(i), a)), row(`S[${j}..] (пред. в SA)`, 0, cells(S.slice(j), b))] },
+      ['r', 'SA[r]', 'суффикс', 'LCP'], saRows(), { [r]: 'cur', [r - 1]: 'ref' });
+    h = h > 0 ? h - 1 : 0;
+  }
+  pushT({ line: 7, msg: 'LCP[r] — длина наибольшего общего префикса соседних суффиксов SA[r−1] и SA[r]. С ним можно, например, считать число различных подстрок: n(n+1)/2 − ΣLCP (для строки без терминатора).', rows: [sRow({})] },
+    ['r', 'SA[r]', 'суффикс', 'LCP'], saRows(), {});
+  const tree = { sa: sa.slice(), lcp: lcp.slice() };
+  let final = 'Готово. Суффиксный массив построен: SA = [' + sa.join(', ') + '].';
+  const m = P.length;
+  if (m) {
+    const cmpPref = r => {
+      const s = S.slice(sa[r], sa[r] + m); let k2 = 0;
+      while (k2 < m && k2 < s.length && s[k2] === P[k2]) k2++;
+      let c;
+      if (k2 === m) c = 0; else if (k2 === s.length) c = -1; else c = ord(s[k2]) < ord(P[k2]) ? -1 : 1;
+      return { c, k: k2, s };
+    };
+    const bsearch = (upper) => {
+      let lo = 0, hi = N;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1, res = cmpPref(mid);
+        st.cmp += res.k + (res.k < m ? 1 : 0);
+        const goRight = upper ? res.c <= 0 : res.c < 0;
+        const a = {}, b = {};
+        for (let t = 0; t < res.k; t++) { add(a, t, 'ok'); add(b, t, 'ok'); }
+        if (res.k < m) add(a, res.k, 'bad'); if (res.k < res.s.length && res.k < m) add(b, res.k, 'bad');
+        const cls = {}; for (let r = lo; r < hi; r++) cls[r] = 'ref'; cls[mid] = 'cur';
+        const verdict = res.c === 0 ? 'равен P' : res.c < 0 ? 'меньше P' : 'больше P';
+        const lo0 = lo, hi0 = hi;
+        if (goRight) lo = mid + 1; else hi = mid;
+        pushT({ line: 10, msg: `${upper ? 'Верхняя' : 'Нижняя'} граница, окно [${lo0}, ${hi0}), mid = ${mid}: первые ${m} символов суффикса ${sa[mid]} — «${res.s}» — ${verdict}. ` + (upper ? (goRight ? 'Нужны суффиксы строго больше P, а этот ≤ P → lo = mid + 1.' : 'Этот суффикс > P → hi = mid.') : (goRight ? 'Нужны суффиксы ≥ P, а этот < P → lo = mid + 1.' : 'Этот суффикс ≥ P → hi = mid.')),
+          vars: { lo: lo0, hi: hi0, mid }, rows: [row('P', 0, cells(P, a)), row(`S[${sa[mid]}..][:${m}]`, 0, cells(res.s, b))] },
+          ['r', 'SA[r]', 'суффикс', 'LCP'], saRows(), cls);
+      }
+      return lo;
+    };
+    push({ line: 9, msg: `Поиск образца «${P}». Все суффиксы с префиксом P образуют в SA непрерывный отрезок [lo, hi). Находим lo — первый суффикс, у которого первые ${m} символов ≥ P, и hi — первый, у которого > P. Оба — двоичным поиском за O(m·log n).`,
+      vars: {}, noCmp: true, rows: [sRow({}), row('P', 0, cells(P, {}))] });
+    const lo = bsearch(false), hi = bsearch(true);
+    const found = sa.slice(lo, hi).sort((a, b) => a - b);
+    st.found = found;
+    const cls = {}; for (let r = lo; r < hi; r++) cls[r] = 'found';
+    const fh = {}; found.forEach(p => { for (let t = 0; t < m; t++) add(fh, p + t, 'found'); });
+    pushT({ line: 10, msg: found.length ? `lo = ${lo}, hi = ${hi}: ответ — SA[${lo}..${hi - 1}] = {${sa.slice(lo, hi).join(', ')}}, т.е. вхождения в позициях ${found.join(', ')}.` : `lo = hi = ${lo}: отрезок пуст — образца в строке нет.`,
+      rows: [sRow(fh), row('P', 0, cells(P, {}))] },
+      ['r', 'SA[r]', 'суффикс', 'LCP'], saRows(), cls);
+    final = found.length ? `Готово. Вхождения «${P}»: позиции ${found.join(', ')} (нумерация с 0).` : `Готово. Образца «${P}» в строке нет.`;
+  }
+  return { frames: F, code: SA_CODE, final, tree };
 }
 
 const INFO = {
@@ -463,41 +1047,202 @@ kmp: [
 <li>В откате не двигать i: символ T[i] ещё не «использован».</li></ul>`]
 ]
 };
-const BUILDERS = { naive: buildNaive, z: buildZ, kmp: buildKMP };
+Object.assign(INFO, {
+  kmpz: '<b>Цель:</b> то же, что у КМП, но префикс-функцию получаем из уже знакомой Z-функции образца.<br><b>Время:</b> O(n + m). <b>Память:</b> O(m).',
+  bm: '<b>Цель:</b> найти образец, пропуская как можно больше символов текста. Сравнение справа налево, сдвиг — по правилам плохого символа и хорошего суффикса.<br><b>Время:</b> в лучшем случае O(n/m) (сублинейно!), в худшем без доработок O(n·m); на обычных текстах — самый быстрый на практике.<br><b>Память:</b> O(m + |алфавит|).',
+  ac: '<b>Цель:</b> искать сразу МНОГО образцов за один проход по тексту.<br><b>Время:</b> O(|T| + сумма длин образцов + число найденных вхождений). <b>Память:</b> O(сумма длин образцов).',
+  stree: '<b>Цель:</b> построить индекс строки, после которого любой образец P ищется за O(|P|), независимо от длины строки.<br><b>Время построения:</b> здесь O(n²) (вставка суффиксов по одному), быстрее — алгоритм Укконена за O(n). <b>Память:</b> O(n) вершин.',
+  ukk: '<b>Цель:</b> построить суффиксное дерево за линейное время O(n), читая строку символ за символом (онлайн).<br><b>Время:</b> O(n) (для алфавита фиксированного размера). <b>Память:</b> O(n).',
+  sa: '<b>Цель:</b> компактный индекс строки: отсортированный список всех суффиксов. Поиск образца — двоичный поиск.<br><b>Время построения:</b> здесь O(n log² n) (удвоение префиксов с сортировкой), есть алгоритмы за O(n log n) и O(n). <b>Память:</b> O(n) — массив чисел, намного компактнее дерева.',
+});
+Object.assign(DETAIL, {
+kmpz: [
+['В чём идея', `<p>КМП из прошлого раздела использует префикс-функцию π. Но π можно получить и из <b>Z-функции образца</b>: обе функции описывают, как образец «повторяет сам себя», просто с разных сторон.</p>
+<ul><li><code>Z[i]</code> — длина общего префикса P и P[i..]: «с позиции i снова идёт начало образца».</li>
+<li><code>π[i]</code> — длина наибольшего бордера P[0..i]: «префикс, который кончается в позиции i».</li></ul>
+<div class="key">Если Z[i] = z &gt; 0, то на отрезке [i, i+z−1] лежит копия префикса P[0..z−1]. Значит, для каждого t = 0…z−1 префикс длины t+1 заканчивается в позиции i+t, и π[i+t] ≥ t+1.</div>`],
+['Как получить π из Z', `<ol><li>Считаем Z для P (фаза 1 — точно как в разделе «Z-функция»).</li>
+<li>Заводим π[0..m−1] = 0. Идём по i = 1…m−1.</li>
+<li>Для каждого i с Z[i] &gt; 0 идём t от z−1 вниз до 0: если π[i+t] уже &gt; 0 — <b>стоп</b>, иначе π[i+t] = t+1.</li></ol>
+<p>Почему идём от длинного к короткому и останавливаемся на занятой клетке: значение в клетке, записанное более ранним i, соответствует префиксу, который начался левее и потому <b>длиннее</b>. π[p] — это максимум, нам нужен именно самый длинный бордер, поэтому короткие значения левее (они лежат в том же отрезке бордеров) уже не нужны.</p>
+<p>Каждая клетка π записывается не более одного раза, поэтому фаза 2 линейна: O(m).</p>`],
+['Поиск в тексте', `<p>Дальше — тот же поиск КМП, что и в предыдущем разделе: j — длина совпавшего префикса, при несовпадении j := π[j−1], i назад не идёт.</p>
+<p>Заметьте: можно было бы искать и «чистым» Z-алгоритмом на строке P#T. КМП на Z-функции — другой способ: Z считаем только для короткого образца, а текст читаем потоком, как в КМП (память O(m), а не O(n+m)).</p>`],
+['Типичные ошибки', `<ul><li>Заполнять клетки слева направо: тогда короткое значение «перекроет» длинное, и π окажется неверной.</li>
+<li>Не останавливаться на занятой клетке: алгоритм станет квадратичным.</li>
+<li>Путать Z[i] (позиция начала копии префикса) и π[i] (позиция конца).</li></ul>`]
+],
+bm: [
+['Главная идея: сравнивать справа налево', `<p>Наивный и КМП сравнивают образец с текстом слева направо. Алгоритм Бойера–Мура <b>прикладывает образец к тексту и сравнивает с конца</b>. Почему это умнее: если последний символ образца не совпал, то мы сразу знаем много о том, куда можно сдвинуться — иногда сразу на всю длину m и пропустить m−1 символов текста, ни разу их не прочитав.</p>
+<p>При несовпадении (или после полного совпадения) образец сдвигается вправо на максимум из двух значений, которые дают два правила. Оба правила гарантируют, что мы <b>не пропустим вхождение</b>.</p>`],
+['Правило плохого символа', `<p>Пусть несовпадение произошло на позиции i образца: <code>T[s+i] = c ≠ P[i]</code>. Образец нужно сдвинуть так, чтобы под c оказался такой же символ образца — иначе вхождения быть не может.</p>
+<ul><li>Берём <b>последнее</b> вхождение c в P: позицию p = bc[c] (−1, если c в P нет).</li>
+<li>Сдвиг: <code>i − p</code>. Если c в P нет, образец уходит целиком за c (p = −1, сдвиг i+1).</li>
+<li>Если p &gt; i (последнее c правее места несовпадения), значение получается ≤ 0 и правило бесполезно — тогда работает второе правило (или сдвиг на 1).</li></ul>
+<p>На схеме перед поиском показана таблица bc: по ней видно, где последний раз встречается каждый символ образца.</p>`],
+['Правило хорошего суффикса', `<p>Если справа уже совпал суффикс u = P[i+1..m−1], а перед ним несовпадение, то образец можно сдвинуть к ближайшему слева месту, где этот суффикс u снова встречается в P — <b>с другим символом перед ним</b> (строгое правило: иначе повторим то же несовпадение).</p>
+<ul><li>Если такого вхождения u в P нет, берём самый длинный префикс P, являющийся суффиксом u, и сдвигаем образец так, чтобы он лёг на конец совпавшего куска.</li>
+<li>Если и такого нет — сдвиг на всю длину m.</li>
+<li>После полного совпадения (i = −1) сдвиг — наименьший период образца, <code>gs[−1]</code>: нужно найти и перекрывающиеся вхождения.</li></ul>
+<p>Значения gs[i] показаны в строке под образцом на третьем шаге. В этой визуализации они вычислены прямо по определению (наименьший допустимый сдвиг), чтобы оно было понятно; в учебниках их считают за O(m) через суффиксный массив образца.</p>`],
+['Шаг за шагом по визуализации', `<ol><li>Образец стоит под текстом со сдвигом s. Сравниваем справа налево: зелёные клетки — совпавший суффикс.</li>
+<li>На несовпадении (красная пара) сообщение показывает оба сдвига и выбранный максимум.</li>
+<li>Следующий кадр — образец уже на новом месте, сравнение снова начинается с последней позиции.</li>
+<li>Попробуйте T = <code>abcdefghijkl</code>, P = <code>xyz</code>: на каждом сдвиге ровно одно сравнение, а образец прыгает сразу на 3 — большая часть текста вообще не читается.</li></ol>`],
+['Сложность и подвохи', `<ul><li><b>Лучший случай</b> — O(n/m): мы читаем лишь каждый m-й символ текста. Чем длиннее образец и больше алфавит, тем быстрее.</li>
+<li><b>Худший случай</b> этой версии (без правила Галила) — O(n·m), например T = aaaa…a, P = aaa…a: вхождений много, сдвиг после каждого всего 1, а проверка вхождения стоит m сравнений.</li>
+<li>Оба правила нужны вместе: плохой символ хорошо работает на «разнообразных» текстах, хороший суффикс — на повторяющихся.</li>
+<li>В отличие от КМП, BM читает текст не строго слева направо — потоковая обработка неудобна.</li></ul>`]
+],
+ac: [
+['Цель: искать много образцов сразу', `<p>Пусть нужно найти в тексте не одно слово, а целый словарь: «he, she, his, hers». Можно запустить КМП для каждого слова — это k проходов по тексту. Алгоритм Ахо–Корасик делает <b>один проход</b>, независимо от числа слов, и сообщает все вхождения всех слов (включая вложенные и пересекающиеся).</p>
+<p>Применения: антивирусы (поиск сигнатур), фильтры слов, grep по списку шаблонов, поиск мотивов в ДНК.</p>
+<p>Идея — превратить словарь в <b>конечный автомат</b>: читая текст символ за символом, мы всегда знаем самую длинную часть недавно прочитанного текста, которая является началом какого-то слова.</p>`],
+['Шаг 1: бор (trie)', `<p>Строим дерево, где каждое слово — путь из корня, рёбра подписаны символами. Слова с общими началами делят начало пути (<code>she</code> и <code>shell</code>). Вершина, где слово заканчивается, <b>терминальная</b> (двойной контур).</p>
+<p>Строка вершины — это префикс какого-то слова. Бор сам по себе умеет искать слова, начинающиеся в фиксированной позиции текста. Не хватает умения «перескакивать» при несовпадении без возврата назад — для этого нужны суффиксные ссылки.</p>`],
+['Шаг 2: суффиксные ссылки', `<p><code>fail(v)</code> — вершина, строка которой является <b>самым длинным собственным суффиксом</b> строки v и при этом есть в боре. Это тот же смысл, что у π в КМП: «если дальше по v идти нельзя, самый длинный полезный остаток прочитанного — вот здесь».</p>
+<p>Считаем в порядке обхода в ширину (по уровням), потому что ссылки определяются через ссылки более коротких строк. Для вершины v с родителем p и символом c:</p>
+<ol><li>Берём f = fail(p).</li><li>Пока из f нет ребра c и f ≠ корень — f = fail(f).</li><li>Если из f есть ребро c — fail(v) = конец этого ребра, иначе fail(v) = корень.</li></ol>
+<p>Это в точности цикл вычисления π из КМП, только на дереве. Заодно считаем <code>out(v)</code> — все слова, которые заканчиваются в этой вершине: свои слова + out(fail(v)). Например в вершине «she» выход {she, he}: слово «he» — суффикс «she».</p>`],
+['Шаг 3: поиск', `<p>Состояние v — вершина бора. Для каждого символа текста c:</p>
+<ol><li>Пока из v нет ребра c и v ≠ корень — идём по суффиксной ссылке v := fail(v) (оставляем самый длинный суффикс, который всё ещё может продолжиться).</li>
+<li>Если ребро c есть — переходим по нему, иначе остаёмся в корне.</li>
+<li>Выписываем все слова из out(v): они заканчиваются в текущей позиции.</li></ol>
+<p>На схеме зелёные символы текста — строка текущего состояния (самый длинный суффикс прочитанного, являющийся префиксом слова), а жёлтые — найденные вхождения.</p>`],
+['Сложность', `<div class="key">Время O(|T| + L + z), где L — суммарная длина образцов, z — число вхождений. Доказательство то же, что у КМП: глубина состояния растёт максимум на 1 за символ, а каждый переход по fail её уменьшает.</div>
+<p>Память — O(L) вершин. Если алфавит большой, рёбра хранят в хеш-таблице; можно предвычислить все переходы автомата (δ(v, c)) и убрать цикл по fail.</p>`],
+['Типичные ошибки', `<ul><li>Забыть унаследованные выходы out(fail(v)): тогда вхождения-суффиксы («he» внутри «she») будут потеряны.</li>
+<li>Считать fail не в порядке уровней: ссылка родителя должна быть уже готова.</li>
+<li>Для корня fail(корень) = корень (иначе зациклится цикл while).</li></ul>`]
+],
+stree: [
+['Цель: индекс строки', `<p>В предыдущих алгоритмах мы готовили к поиску <b>образец</b>, а текст читали заново для каждого образца. Суффиксное дерево отвечает на другую задачу: строка S одна и фиксирована, а образцов (запросов) очень много. Мы один раз строим индекс по S, после чего <b>любой образец P ищется за O(|P|)</b> — не зависит от длины S.</p>
+<p>Этот индекс умеет много больше поиска: самая длинная повторяющаяся подстрока, число различных подстрок, наибольшая общая подстрока двух строк, лексикографически наименьший циклический сдвиг и т. д.</p>`],
+['Что это за дерево', `<p>Выпишем все суффиксы строки S$ (знак $ — терминатор, которого нет в строке). Сложим их в бор и <b>сожмём цепочки из вершин с единственным ребёнком в одно ребро</b> с длинной меткой. Получим суффиксное дерево:</p>
+<ul><li>Листьев ровно n+1 — по одному на суффикс (в листе записан номер суффикса).</li>
+<li>У каждой внутренней вершины ≥ 2 детей, поэтому всего вершин не больше 2(n+1).</li>
+<li>Метки рёбер — подстроки S. Хранят их не в виде строк, а парой индексов (начало, конец), поэтому память O(n).</li>
+<li>Терминатор $ нужен, чтобы ни один суффикс не оказался префиксом другого (у «ana» суффикс «a» — префикс!). Тогда суффикс не «растворится» внутри ребра.</li></ul>`],
+['Построение вставкой суффиксов', `<p>Простейший способ — вставлять суффиксы S[0..], S[1..], … по одному, начиная с корня:</p>
+<ol><li>Из текущей вершины берём ребро, начинающееся с очередного символа суффикса.</li>
+<li>Нет такого ребра — подвешиваем новый лист с остатком суффикса.</li>
+<li>Метка ребра совпала целиком — спускаемся в его конец и продолжаем.</li>
+<li>Метка совпала лишь частично — <b>разрезаем ребро</b> в точке расхождения: появляется внутренняя вершина, от неё идут старый хвост и новый лист.</li></ol>
+<p>Вставка одного суффикса стоит O(n), всего O(n²). Алгоритм Укконена (следующая вкладка) делает то же за O(n).</p>`],
+['Поиск образца', `<p>Идём от корня: берём ребро по первому символу P и сравниваем символы вдоль метки. Возможны исходы:</p>
+<ul><li>нет ребра или расхождение внутри метки → образца в S нет;</li>
+<li>P закончился (в вершине или посреди ребра) → все <b>листья в поддереве</b> под этой точкой — это суффиксы, начинающиеся с P; номера листьев — позиции вхождений.</li></ul>
+<p>Время O(|P| + k), где k — число вхождений. Введите образец в поле «Образец для поиска», чтобы увидеть путь.</p>`],
+['Связь с другими структурами', `<ul><li>Если обойти листья слева направо (рёбра упорядочены по символам), получится <b>суффиксный массив</b> — следующая вкладка. SA — то же дерево, но «развёрнутое» в массив: меньше памяти, чуть медленнее запросы.</li>
+<li>Суффиксные ссылки внутри дерева (их используют Укконен и обходы) идут из вершины со строкой «xα» в вершину со строкой «α».</li></ul>`]
+],
+ukk: [
+['Зачем нужен Укконен', `<p>Простая вставка суффиксов (вкладка «Суффиксное дерево») работает за O(n²). Алгоритм Укконена строит то же дерево за <b>O(n)</b> и при этом <b>онлайн</b>: после каждого прочитанного символа у нас есть корректное дерево для уже прочитанной части строки.</p>
+<p>Идея: не строить суффиксы заново, а при чтении нового символа продлевать существующие, переиспользуя работу предыдущих шагов.</p>`],
+['Фазы и неявное дерево', `<p>В фазе i читаем символ S[i]. Нужно дописать его ко <b>всем</b> суффиксам S[0..i−1], S[1..i−1], …, S[i..i−1]=пустому — то есть превратить дерево префикса S[0..i−1] в дерево префикса S[0..i].</p>
+<p>Три правила продления суффикса (в зависимости от того, где он заканчивается):</p>
+<ol><li><b>Правило 1:</b> суффикс заканчивается в листе — просто дописываем символ. Благодаря «открытым концам» рёбер к листьям (конец = текущее i+1) это происходит <b>автоматически, бесплатно</b> для всех листьев сразу.</li>
+<li><b>Правило 2:</b> дальше по этому суффиксу нет пути с символом S[i] — создаём лист (если суффикс кончается в вершине) или разрезаем ребро и вешаем лист (если посреди ребра).</li>
+<li><b>Правило 3:</b> путь с символом S[i] уже есть — суффикс уже в дереве, ничего не делаем, <b>фаза заканчивается</b>: все более короткие суффиксы тоже уже есть.</li></ol>
+<p>Пока правило 3 «срабатывает», некоторые суффиксы не имеют своего листа — дерево называют <b>неявным</b>. Число таких «неоформленных» суффиксов — <code>remainder</code>. В конце дописывают уникальный терминатор $ и все суффиксы становятся явными.</p>`],
+['Активная точка', `<p>Чтобы не искать место вставки каждого суффикса от корня (это было бы O(n²)), храним <b>активную точку</b> — тройку (active_node, active_edge, active_length): место в дереве, где заканчивается самый длинный ещё не вставленный суффикс.</p>
+<ul><li><code>active_node</code> — вершина, от которой идём; <code>active_edge</code> — первый символ ребра; <code>active_length</code> — сколько символов по ребру прошли.</li>
+<li>Если active_length ≥ длины ребра — спускаемся в его конец (walk-down).</li>
+<li>После вставки суффикса активная точка переходит к следующему (более короткому) суффиксу: от корня — уменьшаем active_length и сдвигаем начало; от внутренней вершины — идём по <b>суффиксной ссылке</b>.</li></ul>`],
+['Суффиксные ссылки', `<p>Если вершина v соответствует строке «xα» (x — символ, α — строка), то суффиксная ссылка ведёт в вершину строки «α». Именно по ней алгоритм мгновенно переходит от суффикса «xα» к суффиксу «α» — следующему кандидату на вставку.</p>
+<p>Когда в одной фазе создаётся несколько внутренних вершин подряд, ссылку новой вершины надо поставить на следующую созданную (или найденную) вершину — для этого хранится lastNew. На схеме ссылки нарисованы пунктиром (ссылки в корень не показаны).</p>`],
+['Почему линейно', `<div class="key">Каждый лист создаётся один раз и никогда не удаляется, а продление листьев бесплатное. Всего листьев ≤ n, внутренних вершин ≤ n. Активная точка только «ползёт» вперёд по строке: remainder растёт на 1 за фазу и уменьшается на 1 при каждом создании вершины, каждый walk-down уменьшает глубину. Суммарно O(n) операций.</div>
+<p>Сравните число кадров на строке <code>banana</code> с кадрами «Суффиксного дерева»: итоговое дерево одно и то же, но Укконен не возвращается в корень.</p>`],
+['Что запомнить', `<ul><li>Три правила: 1 (лист растёт сам), 2 (создать вершину/лист), 3 (суффикс уже есть — фаза окончена).</li>
+<li>remainder = сколько суффиксов ещё не вставлено явно; в последней фазе (символ $) он обязан стать 0.</li>
+<li>Без суффиксных ссылок алгоритм становится квадратичным.</li></ul>`]
+],
+sa: [
+['Цель', `<p><b>Суффиксный массив</b> SA — массив номеров всех суффиксов строки в порядке их сортировки по алфавиту. Это самый компактный индекс строки: n чисел (вместо дерева из ~2n вершин с рёбрами). По нему подстрока ищется обычным <b>двоичным поиском</b>.</p>
+<p>Пример: S = banana$. Суффиксы по порядку: <code>$</code> (6), <code>a$</code> (5), <code>ana$</code> (3), <code>anana$</code> (1), <code>banana$</code> (0), <code>na$</code> (4), <code>nana$</code> (2). Значит, SA = [6, 5, 3, 1, 0, 4, 2].</p>`],
+['Как построить: удвоение префиксов', `<p>Сортировать суффиксы напрямую слишком дорого (сравнение двух суффиксов — O(n)). Вместо этого сортируем по первому символу, потом по первым 2, 4, 8… символам, и каждый раз используем уже посчитанные <b>ранги</b>:</p>
+<ol><li>Раунд 0: ранг суффикса i — номер символа S[i] в алфавите.</li>
+<li>Раунд с шагом k: ключ суффикса i — пара <code>(rank[i], rank[i+k])</code>: ранг первых k символов и ранг следующих k символов. Сортируем по ключам (лексикографически по парам), одинаковые ключи получают одинаковый ранг.</li>
+<li>После раунда суффиксы упорядочены по первым 2k символам. Когда все ранги различны (максимум за ⌈log₂ n⌉ раундов) — порядок окончательный.</li></ol>
+<p>В таблице: зелёные ранги уникальны (позиция уже ясна), фиолетовые ещё делят место с кем-то. Время O(n log² n) при сортировке стандартной функцией.</p>`],
+['LCP и алгоритм Касаи', `<p><code>LCP[r]</code> — длина наибольшего общего префикса соседних в SA суффиксов SA[r−1] и SA[r]. По SA + LCP решаются многие задачи: число различных подстрок (n(n+1)/2 − ΣLCP), самая длинная повторяющаяся подстрока (max LCP) и др.</p>
+<p>Наивно считать LCP — O(n²). Алгоритм Касаи ходит по суффиксам в порядке текста (i = 0, 1, 2, …) и использует факт: если у суффикса i общий префикс с предыдущим в SA равен h, то у суффикса i+1 он не меньше h−1. Поэтому h уменьшается не более чем на 1 за шаг, и всего O(n) сравнений.</p>`],
+['Поиск образца', `<p>Суффиксы, начинающиеся с P, образуют в SA <b>непрерывный отрезок</b> (так как SA отсортирован). Находим его границы двумя двоичными поисками по первым m символам суффикса:</p>
+<ul><li><b>lo</b> — первый индекс r, где <code>S[SA[r]..][:m] ≥ P</code>;</li>
+<li><b>hi</b> — первый индекс, где <code>S[SA[r]..][:m] &gt; P</code>.</li></ul>
+<p>Вхождения — это SA[lo], …, SA[hi−1]. Время O(m · log n). Введите образец в поле «Образец для поиска» — увидите оба поиска.</p>`],
+['Сравнение со структурами из прошлых вкладок', `<ul><li>SA = листья суффиксного дерева, прочитанные слева направо. LCP соседей — высота их общего предка в дереве.</li>
+<li>Дерево быстрее по запросам (O(m)) и богаче по операциям, но тяжёлое по памяти. SA + LCP — компактный и в практике основной выбор (например, в биоинформатике).</li>
+<li>Типичная ошибка: забыть терминатор или считать его бо́льшим всех символов — суффиксы-префиксы встанут не в том порядке. Здесь терминатор считается самым маленьким.</li></ul>`]
+]
+});
+
+const BUILDERS = { naive: buildNaive, z: buildZ, kmp: buildKMP, kmpz: buildKMPZ, bm: buildBM, ac: buildAC, stree: buildSTree, ukk: buildUkk, sa: buildSA };
 
 // ==== UI ====
 if (typeof document !== 'undefined') {
   const $ = id => document.getElementById(id);
-  const PRESETS = [
-    ['abababcabababab / ababab', 'abababcabababab', 'ababab'],
-    ['ABC ABCDAB ABCDABCDABDE / ABCDABD (классика КМП)', 'ABC ABCDAB ABCDABCDABDE', 'ABCDABD'],
-    ['aaaaaaaaab / aaab (худший случай naive)', 'aaaaaaaaab', 'aaab'],
-    ['aabaabaaaabaabaab / aabaab (перекрытия)', 'aabaabaaaabaabaab', 'aabaab'],
-    ['xyabxabxyabxyabxy / abxy', 'xyabxabxyabxyabxy', 'abxy'],
-    ['abcabcabc / def (нет вхождений)', 'abcabcabc', 'def'],
-  ];
-  $('presets').innerHTML = '<option value="">Примеры…</option>' + PRESETS.map((p, i) => `<option value="${i}">${p[0]}</option>`).join('');
-  let algo = 'naive', frames = [], step = 0, timer = null;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const GROUPS = {
+    search: { lt: 'Текст T', lp: 'Образец P', T: 'abababcabababab', P: 'ababab', warn: [60, 30], presets: [
+      ['abababcabababab / ababab', 'abababcabababab', 'ababab'],
+      ['ABC ABCDAB ABCDABCDABDE / ABCDABD (классика КМП)', 'ABC ABCDAB ABCDABCDABDE', 'ABCDABD'],
+      ['aaaaaaaaab / aaab (худший случай naive)', 'aaaaaaaaab', 'aaab'],
+      ['aabaabaaaabaabaab / aabaab (перекрытия)', 'aabaabaaaabaabaab', 'aabaab'],
+      ['xyabxabxyabxyabxy / abxy', 'xyabxabxyabxyabxy', 'abxy'],
+      ['abcdefghijkl / xyz (BM прыгает)', 'abcdefghijkl', 'xyz'],
+      ['abcabcabc / def (нет вхождений)', 'abcabcabc', 'def']] },
+    multi: { lt: 'Текст T', lp: 'Образцы (через запятую)', T: 'ushers', P: 'he, she, his, hers', warn: [60, 40], presets: [
+      ['ushers / he, she, his, hers (классика)', 'ushers', 'he, she, his, hers'],
+      ['abcabcab / abc, bca, cab, ab', 'abcabcab', 'abc, bca, cab, ab'],
+      ['aaaa / a, aa, aaa', 'aaaa', 'a, aa, aaa'],
+      ['abccab / ab, bc, c, cab', 'abccab', 'ab, bc, c, cab']] },
+    suffix: { lt: 'Строка S', lp: 'Образец для поиска (необязательно)', T: 'banana', P: 'ana', warn: [14, 8], presets: [
+      ['banana / ana', 'banana', 'ana'],
+      ['mississippi / issi', 'mississippi', 'issi'],
+      ['abracadabra / abra', 'abracadabra', 'abra'],
+      ['aaaa / aa', 'aaaa', 'aa'],
+      ['abcabx / bc', 'abcabx', 'bc'],
+      ['xabxa / abx', 'xabxa', 'abx']] },
+  };
+  const ALGOS = [['naive', 'Наивный', 'search'], ['z', 'Z-функция', 'search'], ['kmp', 'КМП (π)', 'search'], ['kmpz', 'КМП на Z', 'search'],
+    ['bm', 'Бойер–Мур', 'search'], ['ac', 'Ахо–Корасик', 'multi'], ['stree', 'Суффиксное дерево', 'suffix'], ['ukk', 'Укконен', 'suffix'], ['sa', 'Суффиксный массив', 'suffix']];
+  const gOf = a => ALGOS.find(x => x[0] === a)[2];
+  let algo = 'naive', group = 'search', frames = [], step = 0, timer = null;
+
+  $('tabs').innerHTML = ALGOS.map((a, i) => `<button class="tab${i === 0 ? ' on' : ''}" data-a="${a[0]}">${a[1]}</button>`).join('');
+  function setGroupUI() {
+    const g = GROUPS[group];
+    $('lblT').textContent = g.lt; $('lblP').textContent = g.lp;
+    $('T').value = g.T; $('P').value = g.P;
+    $('presets').innerHTML = '<option value="">Примеры…</option>' + g.presets.map((p, i) => `<option value="${i}">${esc(p[0])}</option>`).join('');
+  }
 
   function rebuild(keepStep) {
-    const T = $('T').value, P = $('P').value;
-    $('err').textContent = T.length > 80 || P.length > 40 ? 'Длинные строки неудобно смотреть; рекомендуется |T| ≤ 40, |P| ≤ 20.' : '';
+    const T = $('T').value, P = $('P').value, g = GROUPS[group];
+    $('err').textContent = T.length > g.warn[0] || P.length > g.warn[1] ? `Длинные строки неудобно смотреть; рекомендуется |${group === 'suffix' ? 'S' : 'T'}| ≤ ${g.warn[0]}.` : '';
     const res = BUILDERS[algo](T, P);
     frames = res.frames;
     const lastF = frames[frames.length - 1];
     const ms = lastF.matches;
-    frames.push({ ...lastF, line: -1, msg: ms.length ? `Готово. Вхождения образца: позиции ${ms.join(', ')} (нумерация с 0). Сравнений символов: ${lastF.cmp}.` : `Готово. Вхождений нет. Сравнений символов: ${lastF.cmp}.` });
+    const fin = res.final || (ms.length ? `Готово. Вхождения образца: позиции ${ms.join(', ')} (нумерация с 0). Сравнений символов: ${lastF.cmp}.` : `Готово. Вхождений нет. Сравнений символов: ${lastF.cmp}.`);
+    frames.push({ ...lastF, line: -1, msg: fin });
     $('code').innerHTML = '';
     res.code.forEach((t, i) => { const d = document.createElement('span'); d.className = 'ln'; d.dataset.i = i; d.textContent = t; $('code').appendChild(d); });
     $('info').innerHTML = INFO[algo];
-    if ($('detail').dataset.a !== algo) { $('detail').dataset.a = algo; $('detail').innerHTML = DETAIL[algo].map((d, i) => `<details${i === 0 ? ' open' : ''}><summary>${d[0]}</summary><div class="det">${d[1]}</div></details>`).join(''); }
+    if ($('detail').dataset.a !== algo) {
+      $('detail').dataset.a = algo;
+      $('detail').innerHTML = DETAIL[algo].map((d, i) => `<details${i === 0 ? ' open' : ''}><summary>${d[0]}</summary><div class="det">${d[1]}</div></details>`).join('');
+    }
     $('slider').max = frames.length - 1;
     step = keepStep ? Math.min(step, frames.length - 1) : 0;
     stats(T, P);
     render();
   }
   function stats(T, P) {
-    const names = { naive: 'Наивный', z: 'Z-алгоритм', kmp: 'КМП' };
+    $('statsBox').style.display = group === 'search' ? '' : 'none';
+    if (group !== 'search') return;
+    const names = { naive: 'Наивный', z: 'Z-алгоритм', kmp: 'КМП (π)', kmpz: 'КМП на Z', bm: 'Бойер–Мур' };
     $('stats').innerHTML = '<tr><th></th><th>сравнений</th><th>вхождения</th></tr>' + Object.keys(names).map(a => {
       const f = BUILDERS[a](T, P).frames, l = f[f.length - 1];
       return `<tr><td>${a === algo ? '<b>' : ''}${names[a]}${a === algo ? '</b>' : ''}</td><td>${l.cmp}</td><td>${l.matches.length ? l.matches.join(', ') : '—'}</td></tr>`;
@@ -515,14 +1260,69 @@ if (typeof document !== 'undefined') {
     r.cells.forEach(c => cs.appendChild(cellEl(c))); e.appendChild(cs);
     return e;
   }
+  function tableEl(t) {
+    const w = document.createElement('div'); w.className = 'tbl';
+    const rowHtml = (cs, tag) => cs.map(c => `<${tag}>${esc(c)}</${tag}>`).join('');
+    w.innerHTML = `<table><thead><tr>${rowHtml(t.head, 'th')}</tr></thead><tbody>` +
+      t.rows.map((r, i) => `<tr class="${(t.rowCls && t.rowCls[i]) || ''}">${rowHtml(r, 'td')}</tr>`).join('') + '</tbody></table>' +
+      (t.caption ? `<div class="cap">${esc(t.caption)}</div>` : '');
+    return w;
+  }
+  function treeEl(tree, caption) {
+    const kids = new Map(); tree.nodes.forEach(n => kids.set(n.id, []));
+    tree.edges.filter(e => e.kind !== 'link').forEach(e => kids.get(e.from).push(e));
+    const maxLab = Math.max(1, ...tree.edges.filter(e => e.kind !== 'link').map(e => e.label.length));
+    const XS = Math.max(tree.xs || 74, Math.ceil(maxLab * 7.8 * 1.65 + 26)), YS = 90, pos = new Map(); let leaf = 0, maxD = 0;
+    const lay = (id, d) => {
+      maxD = Math.max(maxD, d);
+      const ch = kids.get(id);
+      if (!ch.length) { pos.set(id, { x: leaf++ * XS, y: d * YS }); return; }
+      ch.forEach(e => lay(e.to, d + 1));
+      const xs = ch.map(e => pos.get(e.to).x);
+      pos.set(id, { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: d * YS });
+    };
+    lay(tree.root, 0);
+    const PX = 64, PY = 30, W = Math.max(0, (leaf - 1) * XS) + 2 * PX + 40, H = maxD * YS + 2 * PY + 24;
+    const P = id => ({ x: pos.get(id).x + PX, y: pos.get(id).y + PY });
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arr"/></marker></defs>`;
+    tree.edges.filter(e => e.kind !== 'link').forEach(e => {
+      const a = P(e.from), b = P(e.to);
+      s += `<line class="te ${e.cls}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+    });
+    tree.edges.filter(e => e.kind !== 'link').forEach(e => {
+      const a = P(e.from), b = P(e.to), mx = a.x + (b.x - a.x) * 0.55, my = a.y + (b.y - a.y) * 0.55;
+      const right = b.x >= a.x;
+      s += `<text class="tel" x="${mx + (right ? 8 : -8)}" y="${my - 2}" text-anchor="${right ? 'start' : 'end'}">${esc(e.label)}</text>`;
+    });
+    tree.edges.filter(e => e.kind === 'link').forEach(e => {
+      const a = P(e.from), b = P(e.to), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const cx = mx - (b.y - a.y) * 0.35, cy = my + (b.x - a.x) * 0.35;
+      const un = (x, y) => { const L = Math.hypot(x, y) || 1; return [x / L, y / L]; };
+      const [ux, uy] = un(cx - a.x, cy - a.y), [vx, vy] = un(b.x - cx, b.y - cy);
+      s += `<path class="tlk ${e.cls}" d="M${a.x + ux * 16},${a.y + uy * 16} Q${cx},${cy} ${b.x - vx * 19},${b.y - vy * 19}" marker-end="url(#ah)"/>`;
+    });
+    tree.nodes.forEach(n => {
+      const p = P(n.id);
+      if (n.term) s += `<circle class="tn2" cx="${p.x}" cy="${p.y}" r="20"/>`;
+      s += n.shape === 'leaf' ? `<rect class="tn ${n.cls}" x="${p.x - 17}" y="${p.y - 14}" width="34" height="28" rx="9"/>` : `<circle class="tn ${n.cls}" cx="${p.x}" cy="${p.y}" r="16"/>`;
+      s += `<text class="tl" x="${p.x}" y="${p.y + 4.5}" text-anchor="middle">${esc(n.label)}</text>`;
+      if (n.sub) s += `<text class="ts" x="${p.x + 22}" y="${p.y + 5}" text-anchor="start">{${esc(n.sub)}}</text>`;
+    });
+    s += '</svg>';
+    const w = document.createElement('div'); w.className = 'treewrap'; w.innerHTML = s + (caption ? `<div class="cap">${esc(caption)}</div>` : '');
+    return w;
+  }
   function render() {
     const f = frames[step], st = $('stage');
     st.innerHTML = '';
     const first = f.rows[0];
     st.appendChild(rowEl({ label: '', offset: 0, cells: first.cells.map((_, i) => ({ ch: String(i), cls: '' })) }, 'idxrow'));
     f.rows.forEach(r => { if (r === 'div') { const d = document.createElement('div'); d.className = 'divider'; st.appendChild(d); } else st.appendChild(rowEl(r)); });
+    if (f.table) st.appendChild(tableEl(f.table));
+    if (f.tree) st.appendChild(treeEl(f.tree, f.caption));
     $('msg').textContent = f.msg;
-    $('vars').innerHTML = Object.entries({ ...f.vars, 'сравнений': f.cmp }).map(([k, v]) => `<span class="chip">${k} = <b>${v}</b></span>`).join('');
+    const v = { ...f.vars }; if (!f.noCmp) v['сравнений'] = f.cmp;
+    $('vars').innerHTML = Object.entries(v).map(([k, x]) => `<span class="chip">${esc(k)} = <b>${esc(x)}</b></span>`).join('');
     $('matches').textContent = 'Вхождения: ' + (f.matches.length ? f.matches.join(', ') : '—');
     [...$('code').children].forEach(e => e.classList.toggle('act', +e.dataset.i === f.line));
     $('slider').value = step;
@@ -547,20 +1347,22 @@ if (typeof document !== 'undefined') {
   $('last').onclick = () => { stop(); go(frames.length - 1); };
   $('slider').oninput = e => { stop(); go(+e.target.value); };
   document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
-    stop(); algo = b.dataset.a;
+    stop();
+    GROUPS[group].T = $('T').value; GROUPS[group].P = $('P').value;
+    algo = b.dataset.a;
     document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
+    if (gOf(algo) !== group) { group = gOf(algo); setGroupUI(); }
     rebuild(false);
   });
   ['T', 'P'].forEach(id => $(id).oninput = () => { stop(); rebuild(false); });
-  $('presets').onchange = e => { const p = PRESETS[e.target.value]; if (p) { $('T').value = p[1]; $('P').value = p[2]; stop(); rebuild(false); } e.target.value = ''; };
+  $('presets').onchange = e => { const p = GROUPS[group].presets[e.target.value]; if (p) { $('T').value = p[1]; $('P').value = p[2]; stop(); rebuild(false); } e.target.value = ''; };
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
     if (e.key === 'ArrowRight') { stop(); go(step + 1); }
     else if (e.key === 'ArrowLeft') { stop(); go(step - 1); }
     else if (e.key === ' ') { e.preventDefault(); play(); }
   });
+  setGroupUI();
   rebuild(false);
 }
 </script>
-</body>
-</html>
